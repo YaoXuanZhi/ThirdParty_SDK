@@ -1,0 +1,10 @@
+在libcurl开源库中，如果想采取静态库方式或者源码方式来进行开发，那么在curl.h中添加上CURL_STATICLIB的宏定义即可。这个
+开发库已经添加上此宏定义了。
+注意：
+1.此libcurl已经支持openssl，所以可以直接访问https。
+2.某些情况下需要在输入链接上添加上“;winmm.lib;ws2_32.lib”
+3.在某些时候，比如编译curl项目时，某些函数里需要使用下面的预处理宏
+HAVE_CONFIG_H
+_WIN32_WINNT=0x0501
+_CRT_SECURE_NO_DEPRECATE
+_CRT_NONSTDC_NO_DEPRECATE
