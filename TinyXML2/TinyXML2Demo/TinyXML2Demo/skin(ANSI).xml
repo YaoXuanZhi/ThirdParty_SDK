@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window caption="0,0,0,36" roundcorner="5,5" size="600,450" sizebox="6,6,6,6" mininfo="80,60" IntValue="100">
+    <Font name="Î¢ÈíÑÅºÚ" size="12" bold="false" default="true"/>
+    <Font name="Î¢ÈíÑÅºÚ" size="12" bold="true"/>
+    <Default name="Combo" value="normalimage=&quot;res=&apos;118&apos; restype=&apos;png&apos; source=&apos;0,0,100,22&apos; corner=&apos;2,2,20,2&apos;&quot; hotimage=&quot;res=&apos;118&apos; restype=&apos;png&apos; source=&apos;0,22,100,44&apos; corner=&apos;2,2,22,2&apos;&quot; pushedimage=&quot;res=&apos;118&apos; restype=&apos;png&apos; source=&apos;0,44,100,66&apos; corner=&apos;2,2,22,2&apos;&quot;"/>
+    <Default name="VScrollBar" value="button1normalimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;0,0,16,16&apos;&quot; button1hotimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;16,0,32,16,16&apos;&quot; button1pushedimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;32,0,48,16&apos;&quot; button2normalimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;0,32,16,48&apos;&quot; button2hotimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;16,32,32,48&apos;&quot; button2pushedimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;32,32,48,48&apos;&quot; thumbnormalimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;0,48,16,64&apos; corner=&apos;0,2,0,2&apos;&quot; thumbhotimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;16,48,32,64&apos; corner=&apos;0,2,0,2&apos;&quot; thumbpushedimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;32,48,48,64&apos; corner=&apos;0,2,0,2&apos;&quot; bknormalimage=&quot;res=&apos;119&apos; restype=&apos;png&apos; source=&apos;0,16,16,32&apos;&quot;"/>
+    <VerticalLayout bkcolor="#FFFFFFFF" bordersize="2" bordercolor="#FF0934DA">
+        <HorizontalLayout name="header" height="36" bkcolor="#FF4775CC">
+            <HorizontalLayout>
+                <Control width="10"/>
+                <Label name="apptitle" text="Menu Test" font="1" textcolor="#FFFFFFFF"/>
+            </HorizontalLayout>
+            <HorizontalLayout height="25" width="96">
+                <Button name="minbtn" tooltip="×îÐ¡»¯" height="18" width="26" normalimage="res=&apos;103&apos; restype=&apos;png&apos;" hotimage="res=&apos;104&apos; restype=&apos;png&apos;" pushedimage="res=&apos;105&apos; restype=&apos;png&apos;"/>
+                <Button name="maxbtn" tooltip="×î´ó»¯" height="18" width="25" normalimage="res=&apos;106&apos; restype=&apos;png&apos;" hotimage="res=&apos;107&apos; restype=&apos;png&apos;" pushedimage="res=&apos;108&apos; restype=&apos;png&apos;"/>
+                <Button name="restorebtn" visible="false" tooltip="»Ö¸´" height="18" width="25" normalimage="res=&apos;109&apos; restype=&apos;png&apos;" hotimage="res=&apos;110&apos; restype=&apos;png&apos;" pushedimage="res=&apos;111&apos; restype=&apos;png&apos;"/>
+                <Button name="closebtn" tooltip="¹Ø±Õ" height="18" width="43" normalimage="res=&apos;112&apos; restype=&apos;png&apos;" hotimage="res=&apos;113&apos; restype=&apos;png&apos;" pushedimage="res=&apos;114&apos; restype=&apos;png&apos;"/>
+            </HorizontalLayout>
+        </HorizontalLayout>
+        <VerticalLayout name="body" padding="2,0,2,2">
+            <HorizontalLayout padding="10,10,10,10">
+                <Button name="btn_menu" text="²Ëµ¥²âÊÔ" width="120" height="30" normalimage="res=&apos;115&apos; restype=&apos;png&apos;" hotimage="res=&apos;116&apos; restype=&apos;png&apos;" pushedimage="res=&apos;117&apos; restype=&apos;png&apos;"/>
+            </HorizontalLayout>
+        </VerticalLayout>
+    </VerticalLayout>
+</Window>
