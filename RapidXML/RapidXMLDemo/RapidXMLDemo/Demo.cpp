@@ -1,4 +1,5 @@
-//代码来源于：http://blog.csdn.net/wqvbjhc/article/details/7662931
+//代码主要来源于：http://blog.csdn.net/wqvbjhc/article/details/7662931
+//另外本人补充了一些
 
 #include <iostream>  
 #include <vector>
@@ -9,6 +10,8 @@
 
 using namespace rapidxml;
 using namespace std;
+
+//注意，RapidXML库内置了指针变量回收处理，因此不需要开发者再手动回收哦。
 
 void OptionRapidXML_Write1() {
 	xml_document<> doc;//创建根节点，其代指为XML文档
@@ -51,7 +54,7 @@ void OptionRapidXML_Write1() {
 	{
 		std::cout << MyStrArr[i] << std::endl;
 		SongInfoNode->append_node(doc.allocate_node(rapidxml::node_element, "Info", doc.allocate_string(MyStrArr[i].c_str())));//推荐写法
-		//SongInfoNode->append_node(doc.allocate_node(rapidxml::node_element, "Info", MyStrArr[i].c_str()));//不推荐写法，详情请见：http://www.cnblogs.com/kex1n/archive/2013/08/27/3285900.html
+		//SongInfoNode->append_node(doc.allocate_node(rapidxml::node_element, "Info", MyStrArr[i].c_str()));//不推荐写法
 	}
 
 	node->append_node(SongInfoNode);
@@ -194,42 +197,44 @@ void OptionRapidXML_Modify()
 }
 
 
-/*
-//遍历所有节点
-for(rapidxml::xml_node<char> * node = parent_node->first_node("node name");
-node != NULL;
-node = node->next_sibling())
+void BrowerAttitude(xml_node<>* CurrentElement)
 {
-...
+	if (CurrentElement->first_attribute() != NULL)
+	{
+		for (rapidxml::xml_attribute<char> * attr = CurrentElement->first_attribute(); attr != NULL; attr = attr->next_attribute())
+			printf("%s==%s\n", attr->name(), attr->value());
+	}
 }
-*/
 
 
-/*
-//遍历所有属性
-for(rapidxml::xml_attribute<char> * attr = node->first_attribute("node name");
-attr != NULL;
-attr = attr->next_attribute())
+
+//遍历所有元素
+void BrowerElement(xml_node<>* RootElement)
 {
-char * value = attr->value();
+	if (RootElement != NULL)
+	{
+		BrowerAttitude(RootElement);
+		if (RootElement->first_node())
+		{
+			for (xml_node<>* ElementPos = RootElement->first_node(); ElementPos != NULL; ElementPos = ElementPos->next_sibling())
+				BrowerElement(ElementPos);
+		}else
+			cout << RootElement->name() << "不存在子元素" << endl;
+	}
 }
-*/
-
-
-/*
-//判断解析能否成功
-try {
-doc.parse<0>((char*)tmpbuf);//会改变参数的内容,tmpbuf的生命周期必须到解析完
-} catch (rapidxml::parse_error &e) {
-err="parse xml error. ";
-err+=e.what();
-delete []tmpbuf;
-return s_stl_ruleinfo;
-}
-*/
 
 
 void main()
 {
-	OptionRapidXML_Write2();
+	file<> fdoc("skin(ANSI).xml");
+	//std::cout << fdoc.data() << std::endl;
+	xml_document<>   doc;
+	doc.parse<0>(fdoc.data());
+	//cout << doc << endl;
+
+	//遍历所有元素
+	xml_node<>* RootElement = doc.first_node();
+	BrowerElement(RootElement);
+	//delete RootElement;//不需要手动回收指针变量的内存
+	system("pause");
 }
