@@ -51,7 +51,7 @@ void OptionRapidXML_Write1() {
 	{
 		std::cout << MyStrArr[i] << std::endl;
 		SongInfoNode->append_node(doc.allocate_node(rapidxml::node_element, "Info", doc.allocate_string(MyStrArr[i].c_str())));//推荐写法
-		//SongInfoNode->append_node(doc.allocate_node(rapidxml::node_element, "Info", MyStrArr[i].c_str()));//不推荐写法
+		//SongInfoNode->append_node(doc.allocate_node(rapidxml::node_element, "Info", MyStrArr[i].c_str()));//不推荐写法，详情请见：http://www.cnblogs.com/kex1n/archive/2013/08/27/3285900.html
 	}
 
 	node->append_node(SongInfoNode);
