@@ -1,0 +1,144 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A5FA1772-4E07-430D-925B-5253C5F131C9}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Tidy-Html5Demo</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120_xp</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120_xp</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader />
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>Tidy-Html5\include;Tidy-Html5\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader />
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>Tidy-Html5\include;Tidy-Html5\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Tidy-Html5\src\access.c" />
+    <ClCompile Include="Tidy-Html5\src\alloc.c" />
+    <ClCompile Include="Tidy-Html5\src\attrask.c" />
+    <ClCompile Include="Tidy-Html5\src\attrdict.c" />
+    <ClCompile Include="Tidy-Html5\src\attrget.c" />
+    <ClCompile Include="Tidy-Html5\src\attrs.c" />
+    <ClCompile Include="Tidy-Html5\src\buffio.c" />
+    <ClCompile Include="Tidy-Html5\src\charsets.c" />
+    <ClCompile Include="Tidy-Html5\src\clean.c" />
+    <ClCompile Include="Tidy-Html5\src\config.c" />
+    <ClCompile Include="Tidy-Html5\src\entities.c" />
+    <ClCompile Include="Tidy-Html5\src\fileio.c" />
+    <ClCompile Include="Tidy-Html5\src\gdoc.c" />
+    <ClCompile Include="Tidy-Html5\src\iconvtc.c" />
+    <ClCompile Include="Tidy-Html5\src\istack.c" />
+    <ClCompile Include="Tidy-Html5\src\lexer.c" />
+    <ClCompile Include="Tidy-Html5\src\localize.c" />
+    <ClCompile Include="Tidy-Html5\src\mappedio.c" />
+    <ClCompile Include="Tidy-Html5\src\parser.c" />
+    <ClCompile Include="Tidy-Html5\src\pprint.c" />
+    <ClCompile Include="Tidy-Html5\src\sprtf.c" />
+    <ClCompile Include="Tidy-Html5\src\streamio.c" />
+    <ClCompile Include="Tidy-Html5\src\tagask.c" />
+    <ClCompile Include="Tidy-Html5\src\tags.c" />
+    <ClCompile Include="Tidy-Html5\src\tidylib.c" />
+    <ClCompile Include="Tidy-Html5\src\tmbstr.c" />
+    <ClCompile Include="Tidy-Html5\src\utf8.c" />
+    <ClCompile Include="Tidy-Html5\src\win32tc.c" />
+    <ClCompile Include="Tidy.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Tidy-Html5\include\tidy.h" />
+    <ClInclude Include="Tidy-Html5\include\tidybuffio.h" />
+    <ClInclude Include="Tidy-Html5\include\tidyenum.h" />
+    <ClInclude Include="Tidy-Html5\include\tidyplatform.h" />
+    <ClInclude Include="Tidy-Html5\src\access.h" />
+    <ClInclude Include="Tidy-Html5\src\attrdict.h" />
+    <ClInclude Include="Tidy-Html5\src\attrs.h" />
+    <ClInclude Include="Tidy-Html5\src\charsets.h" />
+    <ClInclude Include="Tidy-Html5\src\clean.h" />
+    <ClInclude Include="Tidy-Html5\src\config.h" />
+    <ClInclude Include="Tidy-Html5\src\entities.h" />
+    <ClInclude Include="Tidy-Html5\src\fileio.h" />
+    <ClInclude Include="Tidy-Html5\src\forward.h" />
+    <ClInclude Include="Tidy-Html5\src\gdoc.h" />
+    <ClInclude Include="Tidy-Html5\src\iconvtc.h" />
+    <ClInclude Include="Tidy-Html5\src\lexer.h" />
+    <ClInclude Include="Tidy-Html5\src\mappedio.h" />
+    <ClInclude Include="Tidy-Html5\src\message.h" />
+    <ClInclude Include="Tidy-Html5\src\parser.h" />
+    <ClInclude Include="Tidy-Html5\src\pprint.h" />
+    <ClInclude Include="Tidy-Html5\src\sprtf.h" />
+    <ClInclude Include="Tidy-Html5\src\streamio.h" />
+    <ClInclude Include="Tidy-Html5\src\tags.h" />
+    <ClInclude Include="Tidy-Html5\src\tidy-int.h" />
+    <ClInclude Include="Tidy-Html5\src\tmbstr.h" />
+    <ClInclude Include="Tidy-Html5\src\utf8.h" />
+    <ClInclude Include="Tidy-Html5\src\version.h" />
+    <ClInclude Include="Tidy-Html5\src\win32tc.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

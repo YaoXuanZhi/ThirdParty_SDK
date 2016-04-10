@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Tidy-Html5">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Tidy-Html5\include">
+      <UniqueIdentifier>{e77bbfbf-e673-41fc-8fdd-b6689af89d5a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tidy-Html5\src">
+      <UniqueIdentifier>{a652fa3f-3096-4c41-8cc2-b4f278777f7f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Tidy.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\access.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\alloc.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\attrask.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\attrdict.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\attrget.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\attrs.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\buffio.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\charsets.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\clean.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\config.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\entities.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\fileio.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\gdoc.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\iconvtc.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\istack.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\lexer.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\localize.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\mappedio.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\parser.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\pprint.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\sprtf.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\streamio.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\tagask.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\tags.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\tidylib.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\tmbstr.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\utf8.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tidy-Html5\src\win32tc.c">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Tidy-Html5\include\tidy.h">
+      <Filter>Tidy-Html5\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\include\tidybuffio.h">
+      <Filter>Tidy-Html5\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\include\tidyenum.h">
+      <Filter>Tidy-Html5\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\include\tidyplatform.h">
+      <Filter>Tidy-Html5\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\access.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\attrdict.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\attrs.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\charsets.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\clean.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\config.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\entities.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\fileio.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\forward.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\gdoc.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\iconvtc.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\lexer.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\mappedio.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\message.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\parser.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\pprint.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\sprtf.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\streamio.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\tags.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\tidy-int.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\tmbstr.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\utf8.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\version.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Tidy-Html5\src\win32tc.h">
+      <Filter>Tidy-Html5\src</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
