@@ -4,7 +4,6 @@
 // See file LICENSE for detail or copy at http://jsoncpp.sourceforge.net/LICENSE
 
 #if !defined(JSON_IS_AMALGAMATION)
-//#include <json/writer.h>
 #include "writer.h"
 #include "json_tool.h"
 #endif // if !defined(JSON_IS_AMALGAMATION)
@@ -21,41 +20,22 @@
 #include <float.h>
 #define isfinite _finite
 #elif defined(__sun) && defined(__SVR4) //Solaris
-#if !defined(isfinite)
 #include <ieeefp.h>
 #define isfinite finite
-#endif
-#elif defined(_AIX)
-#if !defined(isfinite)
-#include <math.h>
-#define isfinite finite
-#endif
-#elif defined(__hpux)
-#if !defined(isfinite)
-#if defined(__ia64) && !defined(finite)
-#define isfinite(x) ((sizeof(x) == sizeof(float) ? \
-                     _Isfinitef(x) : _IsFinite(x)))
-#else
-#include <math.h>
-#define isfinite finite
-#endif
-#endif
 #else
 #include <cmath>
-#if !(defined(__QNXNTO__)) // QNX already defines isfinite
 #define isfinite std::isfinite
-#endif
 #endif
 
 #if defined(_MSC_VER)
-#if !defined(WINCE) && defined(__STDC_SECURE_LIB__) && _MSC_VER >= 1500 // VC++ 9.0 and above
+#if !defined(WINCE) && defined(__STDC_SECURE_LIB__) && _MSC_VER >= 1500 // VC++ 9.0 and above 
 #define snprintf sprintf_s
 #elif _MSC_VER >= 1900 // VC++ 14.0 and above
 #define snprintf std::snprintf
 #else
 #define snprintf _snprintf
 #endif
-#elif defined(__ANDROID__) || defined(__QNXNTO__)
+#elif defined(__ANDROID__)
 #define snprintf snprintf
 #elif __cplusplus >= 201103L
 #define snprintf std::snprintf
@@ -74,10 +54,10 @@
 
 namespace Json {
 
-#if __cplusplus >= 201103L || (defined(_CPPLIB_VER) && _CPPLIB_VER >= 520)
-typedef std::unique_ptr<StreamWriter> StreamWriterPtr;
+#if __GNUC__ >= 6
+typedef std::scoped_ptr<StreamWriter> const  StreamWriterPtr;
 #else
-typedef std::auto_ptr<StreamWriter>   StreamWriterPtr;
+typedef std::auto_ptr<StreamWriter>          StreamWriterPtr;
 #endif
 
 static bool containsControlCharacter(const char* str) {
@@ -316,28 +296,21 @@ Writer::~Writer() {}
 // //////////////////////////////////////////////////////////////////
 
 FastWriter::FastWriter()
-    : yamlCompatiblityEnabled_(false), dropNullPlaceholders_(false),
-      omitEndingLineFeed_(false) {}
+    : yamlCompatiblityEnabled_(false) {}
 
 void FastWriter::enableYAMLCompatibility() { yamlCompatiblityEnabled_ = true; }
-
-void FastWriter::dropNullPlaceholders() { dropNullPlaceholders_ = true; }
-
-void FastWriter::omitEndingLineFeed() { omitEndingLineFeed_ = true; }
 
 std::string FastWriter::write(const Value& root) {
   document_ = "";
   writeValue(root);
-  if (!omitEndingLineFeed_)
-    document_ += "\n";
+  document_ += "\n";
   return document_;
 }
 
 void FastWriter::writeValue(const Value& value) {
   switch (value.type()) {
   case nullValue:
-    if (!dropNullPlaceholders_)
-      document_ += "null";
+    document_ += "null";
     break;
   case intValue:
     document_ += valueToString(value.asLargestInt());
@@ -512,7 +485,8 @@ bool StyledWriter::isMultineArray(const Value& value) {
   childValues_.clear();
   for (int index = 0; index < size && !isMultiLine; ++index) {
     const Value& childValue = value[index];
-    isMultiLine = ((childValue.isArray() || childValue.isObject()) &&
+    isMultiLine =
+        isMultiLine || ((childValue.isArray() || childValue.isObject()) &&
                         childValue.size() > 0);
   }
   if (!isMultiLine) // check if line length > max line length
@@ -731,7 +705,8 @@ bool StyledStreamWriter::isMultineArray(const Value& value) {
   childValues_.clear();
   for (int index = 0; index < size && !isMultiLine; ++index) {
     const Value& childValue = value[index];
-    isMultiLine = ((childValue.isArray() || childValue.isObject()) &&
+    isMultiLine =
+        isMultiLine || ((childValue.isArray() || childValue.isObject()) &&
                         childValue.size() > 0);
   }
   if (!isMultiLine) // check if line length > max line length
@@ -838,7 +813,7 @@ struct BuiltStyledStreamWriter : public StreamWriter
       std::string const& endingLineFeedSymbol,
       bool useSpecialFloats,
       unsigned int precision);
-  int write(Value const& root, std::ostream* sout) override;
+  virtual int write(Value const& root, std::ostream* sout);
 private:
   void writeValue(Value const& value);
   void writeArrayValue(Value const& value);
@@ -1014,7 +989,8 @@ bool BuiltStyledStreamWriter::isMultineArray(Value const& value) {
   childValues_.clear();
   for (int index = 0; index < size && !isMultiLine; ++index) {
     Value const& childValue = value[index];
-    isMultiLine = ((childValue.isArray() || childValue.isObject()) &&
+    isMultiLine =
+        isMultiLine || ((childValue.isArray() || childValue.isObject()) &&
                         childValue.size() > 0);
   }
   if (!isMultiLine) // check if line length > max line length

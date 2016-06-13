@@ -4,9 +4,6 @@
 // See file LICENSE for detail or copy at http://jsoncpp.sourceforge.net/LICENSE
 
 #if !defined(JSON_IS_AMALGAMATION)
-//#include <json/assertions.h>
-//#include <json/reader.h>
-//#include <json/value.h>
 #include "assertions.h"
 #include "reader.h"
 #include "value.h"
@@ -30,14 +27,10 @@
 #else
 #define snprintf _snprintf
 #endif
-#elif defined(__ANDROID__) || defined(__QNXNTO__)
+#elif defined(__ANDROID__)
 #define snprintf snprintf
 #elif __cplusplus >= 201103L
 #define snprintf std::snprintf
-#endif
-
-#if defined(__QNXNTO__)
-#define sscanf std::sscanf
 #endif
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400 // VC++ 8.0
@@ -50,27 +43,24 @@ static int       stackDepth_g = 0;  // see readValue()
 
 namespace Json {
 
-#if __cplusplus >= 201103L || (defined(_CPPLIB_VER) && _CPPLIB_VER >= 520)
-typedef std::unique_ptr<CharReader> CharReaderPtr;
+#if __GNUC__ >= 6
+typedef std::scoped_ptr<CharReader> const  CharReaderPtr;
 #else
-typedef std::auto_ptr<CharReader>   CharReaderPtr;
+typedef std::auto_ptr<CharReader>          CharReaderPtr;
 #endif
 
 // Implementation of class Features
 // ////////////////////////////////
 
 Features::Features()
-    : allowComments_(true), strictRoot_(false),
-      allowDroppedNullPlaceholders_(false), allowNumericKeys_(false) {}
-
+    : allowComments_(true), strictRoot_(false)
+{}
 Features Features::all() { return Features(); }
 
 Features Features::strictMode() {
   Features features;
   features.allowComments_ = false;
   features.strictRoot_ = true;
-  features.allowDroppedNullPlaceholders_ = false;
-  features.allowNumericKeys_ = false;
   return features;
 }
 
@@ -180,11 +170,9 @@ bool Reader::readValue() {
   switch (token.type_) {
   case tokenObjectBegin:
     successful = readObject(token);
-    currentValue().setOffsetLimit(current_ - begin_);
     break;
   case tokenArrayBegin:
     successful = readArray(token);
-    currentValue().setOffsetLimit(current_ - begin_);
     break;
   case tokenNumber:
     successful = decodeNumber(token);
@@ -196,42 +184,22 @@ bool Reader::readValue() {
     {
     Value v(true);
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenFalse:
     {
     Value v(false);
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenNull:
     {
     Value v;
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
-  case tokenArraySeparator:
-  case tokenObjectEnd:
-  case tokenArrayEnd:
-    if (features_.allowDroppedNullPlaceholders_) {
-      // "Un-read" the current token and mark the current value as a null
-      // token.
-      current_--;
-      Value v;
-      currentValue().swapPayload(v);
-      currentValue().setOffsetStart(current_ - begin_ - 1);
-      currentValue().setOffsetLimit(current_ - begin_);
-      break;
-    } // Else, fall through...
+  // Else, fall through...
   default:
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     return addError("Syntax error: value, object or array expected.", token);
   }
 
@@ -459,12 +427,11 @@ bool Reader::readString() {
   return c == '"';
 }
 
-bool Reader::readObject(Token& tokenStart) {
+bool Reader::readObject(Token& /*tokenStart*/) {
   Token tokenName;
   std::string name;
   Value init(objectValue);
   currentValue().swapPayload(init);
-  currentValue().setOffsetStart(tokenStart.start_ - begin_);
   while (readToken(tokenName)) {
     bool initialTokenOk = true;
     while (tokenName.type_ == tokenComment && initialTokenOk)
@@ -477,11 +444,6 @@ bool Reader::readObject(Token& tokenStart) {
     if (tokenName.type_ == tokenString) {
       if (!decodeString(tokenName, name))
         return recoverFromError(tokenObjectEnd);
-    } else if (tokenName.type_ == tokenNumber && features_.allowNumericKeys_) {
-      Value numberName;
-      if (!decodeNumber(tokenName, numberName))
-        return recoverFromError(tokenObjectEnd);
-      name = numberName.asString();
     } else {
       break;
     }
@@ -515,10 +477,9 @@ bool Reader::readObject(Token& tokenStart) {
       "Missing '}' or object member name", tokenName, tokenObjectEnd);
 }
 
-bool Reader::readArray(Token& tokenStart) {
+bool Reader::readArray(Token& /*tokenStart*/) {
   Value init(arrayValue);
   currentValue().swapPayload(init);
-  currentValue().setOffsetStart(tokenStart.start_ - begin_);
   skipSpaces();
   if (*current_ == ']') // empty array
   {
@@ -558,8 +519,6 @@ bool Reader::decodeNumber(Token& token) {
   if (!decodeNumber(token, decoded))
     return false;
   currentValue().swapPayload(decoded);
-  currentValue().setOffsetStart(token.start_ - begin_);
-  currentValue().setOffsetLimit(token.end_ - begin_);
   return true;
 }
 
@@ -610,8 +569,6 @@ bool Reader::decodeDouble(Token& token) {
   if (!decodeDouble(token, decoded))
     return false;
   currentValue().swapPayload(decoded);
-  currentValue().setOffsetStart(token.start_ - begin_);
-  currentValue().setOffsetLimit(token.end_ - begin_);
   return true;
 }
 
@@ -633,8 +590,6 @@ bool Reader::decodeString(Token& token) {
     return false;
   Value decoded(decoded_string);
   currentValue().swapPayload(decoded);
-  currentValue().setOffsetStart(token.start_ - begin_);
-  currentValue().setOffsetLimit(token.end_ - begin_);
   return true;
 }
 
@@ -838,64 +793,14 @@ std::string Reader::getFormattedErrorMessages() const {
   return formattedMessage;
 }
 
-std::vector<Reader::StructuredError> Reader::getStructuredErrors() const {
-  std::vector<Reader::StructuredError> allErrors;
-  for (Errors::const_iterator itError = errors_.begin();
-       itError != errors_.end();
-       ++itError) {
-    const ErrorInfo& error = *itError;
-    Reader::StructuredError structured;
-    structured.offset_start = error.token_.start_ - begin_;
-    structured.offset_limit = error.token_.end_ - begin_;
-    structured.message = error.message_;
-    allErrors.push_back(structured);
-  }
-  return allErrors;
-}
-
-bool Reader::pushError(const Value& value, const std::string& message) {
-  size_t length = end_ - begin_;
-  if(value.getOffsetStart() > length
-    || value.getOffsetLimit() > length)
-    return false;
-  Token token;
-  token.type_ = tokenError;
-  token.start_ = begin_ + value.getOffsetStart();
-  token.end_ = end_ + value.getOffsetLimit();
-  ErrorInfo info;
-  info.token_ = token;
-  info.message_ = message;
-  info.extra_ = 0;
-  errors_.push_back(info);
-  return true;
-}
-
-bool Reader::pushError(const Value& value, const std::string& message, const Value& extra) {
-  size_t length = end_ - begin_;
-  if(value.getOffsetStart() > length
-    || value.getOffsetLimit() > length
-    || extra.getOffsetLimit() > length)
-    return false;
-  Token token;
-  token.type_ = tokenError;
-  token.start_ = begin_ + value.getOffsetStart();
-  token.end_ = begin_ + value.getOffsetLimit();
-  ErrorInfo info;
-  info.token_ = token;
-  info.message_ = message;
-  info.extra_ = begin_ + extra.getOffsetStart();
-  errors_.push_back(info);
-  return true;
-}
-
-bool Reader::good() const {
-  return !errors_.size();
-}
+// Reader
+/////////////////////////
 
 // exact copy of Features
 class OurFeatures {
 public:
   static OurFeatures all();
+  OurFeatures();
   bool allowComments_;
   bool strictRoot_;
   bool allowDroppedNullPlaceholders_;
@@ -909,6 +814,15 @@ public:
 
 // exact copy of Implementation of class Features
 // ////////////////////////////////
+
+OurFeatures::OurFeatures()
+    : allowComments_(true), strictRoot_(false)
+    , allowDroppedNullPlaceholders_(false), allowNumericKeys_(false)
+    , allowSingleQuotes_(false)
+    , failIfExtra_(false)
+    , allowSpecialFloats_(false)
+{
+}
 
 OurFeatures OurFeatures::all() { return OurFeatures(); }
 
@@ -932,10 +846,6 @@ public:
              Value& root,
              bool collectComments = true);
   std::string getFormattedErrorMessages() const;
-  std::vector<StructuredError> getStructuredErrors() const;
-  bool pushError(const Value& value, const std::string& message);
-  bool pushError(const Value& value, const std::string& message, const Value& extra);
-  bool good() const;
 
 private:
   OurReader(OurReader const&);  // no impl
@@ -1037,9 +947,7 @@ private:
 
 OurReader::OurReader(OurFeatures const& features)
     : errors_(), document_(), begin_(), end_(), current_(), lastValueEnd_(),
-      lastValue_(), commentsBefore_(),
-      stackDepth_(0),
-      features_(features), collectComments_() {
+      lastValue_(), commentsBefore_(), features_(features), collectComments_() {
 }
 
 bool OurReader::parse(const char* beginDoc,
@@ -1105,11 +1013,9 @@ bool OurReader::readValue() {
   switch (token.type_) {
   case tokenObjectBegin:
     successful = readObject(token);
-    currentValue().setOffsetLimit(current_ - begin_);
     break;
   case tokenArrayBegin:
     successful = readArray(token);
-    currentValue().setOffsetLimit(current_ - begin_);
     break;
   case tokenNumber:
     successful = decodeNumber(token);
@@ -1121,48 +1027,36 @@ bool OurReader::readValue() {
     {
     Value v(true);
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenFalse:
     {
     Value v(false);
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenNull:
     {
     Value v;
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenNaN:
     {
     Value v(std::numeric_limits<double>::quiet_NaN());
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenPosInf:
     {
     Value v(std::numeric_limits<double>::infinity());
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenNegInf:
     {
     Value v(-std::numeric_limits<double>::infinity());
     currentValue().swapPayload(v);
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     }
     break;
   case tokenArraySeparator:
@@ -1174,13 +1068,9 @@ bool OurReader::readValue() {
       current_--;
       Value v;
       currentValue().swapPayload(v);
-      currentValue().setOffsetStart(current_ - begin_ - 1);
-      currentValue().setOffsetLimit(current_ - begin_);
       break;
     } // else, fall through ...
   default:
-    currentValue().setOffsetStart(token.start_ - begin_);
-    currentValue().setOffsetLimit(token.end_ - begin_);
     return addError("Syntax error: value, object or array expected.", token);
   }
 
@@ -1435,12 +1325,11 @@ bool OurReader::readStringSingleQuote() {
   return c == '\'';
 }
 
-bool OurReader::readObject(Token& tokenStart) {
+bool OurReader::readObject(Token& /*tokenStart*/) {
   Token tokenName;
   std::string name;
   Value init(objectValue);
   currentValue().swapPayload(init);
-  currentValue().setOffsetStart(tokenStart.start_ - begin_);
   while (readToken(tokenName)) {
     bool initialTokenOk = true;
     while (tokenName.type_ == tokenComment && initialTokenOk)
@@ -1497,10 +1386,9 @@ bool OurReader::readObject(Token& tokenStart) {
       "Missing '}' or object member name", tokenName, tokenObjectEnd);
 }
 
-bool OurReader::readArray(Token& tokenStart) {
+bool OurReader::readArray(Token& /*tokenStart*/) {
   Value init(arrayValue);
   currentValue().swapPayload(init);
-  currentValue().setOffsetStart(tokenStart.start_ - begin_);
   skipSpaces();
   if (*current_ == ']') // empty array
   {
@@ -1540,8 +1428,6 @@ bool OurReader::decodeNumber(Token& token) {
   if (!decodeNumber(token, decoded))
     return false;
   currentValue().swapPayload(decoded);
-  currentValue().setOffsetStart(token.start_ - begin_);
-  currentValue().setOffsetLimit(token.end_ - begin_);
   return true;
 }
 
@@ -1590,40 +1476,14 @@ bool OurReader::decodeDouble(Token& token) {
   if (!decodeDouble(token, decoded))
     return false;
   currentValue().swapPayload(decoded);
-  currentValue().setOffsetStart(token.start_ - begin_);
-  currentValue().setOffsetLimit(token.end_ - begin_);
   return true;
 }
 
 bool OurReader::decodeDouble(Token& token, Value& decoded) {
   double value = 0;
-  const int bufferSize = 32;
-  int count;
-  int length = int(token.end_ - token.start_);
-
-  // Sanity check to avoid buffer overflow exploits.
-  if (length < 0) {
-    return addError("Unable to parse token length", token);
-  }
-
-  // Avoid using a string constant for the format control string given to
-  // sscanf, as this can cause hard to debug crashes on OS X. See here for more
-  // info:
-  //
-  //     http://developer.apple.com/library/mac/#DOCUMENTATION/DeveloperTools/gcc-4.0.1/gcc/Incompatibilities.html
-  char format[] = "%lf";
-
-  if (length <= bufferSize) {
-    Char buffer[bufferSize + 1];
-    memcpy(buffer, token.start_, length);
-    buffer[length] = 0;
-    count = sscanf(buffer, format, &value);
-  } else {
-    std::string buffer(token.start_, token.end_);
-    count = sscanf(buffer.c_str(), format, &value);
-  }
-
-  if (count != 1)
+  std::string buffer( token.start_, token.end_ );
+  std::istringstream is(buffer);
+  if (!(is >> value))
     return addError("'" + std::string(token.start_, token.end_) +
                         "' is not a number.",
                     token);
@@ -1637,8 +1497,6 @@ bool OurReader::decodeString(Token& token) {
     return false;
   Value decoded(decoded_string);
   currentValue().swapPayload(decoded);
-  currentValue().setOffsetStart(token.start_ - begin_);
-  currentValue().setOffsetLimit(token.end_ - begin_);
   return true;
 }
 
@@ -1837,60 +1695,6 @@ std::string OurReader::getFormattedErrorMessages() const {
   return formattedMessage;
 }
 
-std::vector<OurReader::StructuredError> OurReader::getStructuredErrors() const {
-  std::vector<OurReader::StructuredError> allErrors;
-  for (Errors::const_iterator itError = errors_.begin();
-       itError != errors_.end();
-       ++itError) {
-    const ErrorInfo& error = *itError;
-    OurReader::StructuredError structured;
-    structured.offset_start = error.token_.start_ - begin_;
-    structured.offset_limit = error.token_.end_ - begin_;
-    structured.message = error.message_;
-    allErrors.push_back(structured);
-  }
-  return allErrors;
-}
-
-bool OurReader::pushError(const Value& value, const std::string& message) {
-  size_t length = end_ - begin_;
-  if(value.getOffsetStart() > length
-    || value.getOffsetLimit() > length)
-    return false;
-  Token token;
-  token.type_ = tokenError;
-  token.start_ = begin_ + value.getOffsetStart();
-  token.end_ = end_ + value.getOffsetLimit();
-  ErrorInfo info;
-  info.token_ = token;
-  info.message_ = message;
-  info.extra_ = 0;
-  errors_.push_back(info);
-  return true;
-}
-
-bool OurReader::pushError(const Value& value, const std::string& message, const Value& extra) {
-  size_t length = end_ - begin_;
-  if(value.getOffsetStart() > length
-    || value.getOffsetLimit() > length
-    || extra.getOffsetLimit() > length)
-    return false;
-  Token token;
-  token.type_ = tokenError;
-  token.start_ = begin_ + value.getOffsetStart();
-  token.end_ = begin_ + value.getOffsetLimit();
-  ErrorInfo info;
-  info.token_ = token;
-  info.message_ = message;
-  info.extra_ = begin_ + extra.getOffsetStart();
-  errors_.push_back(info);
-  return true;
-}
-
-bool OurReader::good() const {
-  return !errors_.size();
-}
-
 
 class OurCharReader : public CharReader {
   bool const collectComments_;
@@ -1902,9 +1706,9 @@ public:
   : collectComments_(collectComments)
   , reader_(features)
   {}
-  bool parse(
+  virtual bool parse(
       char const* beginDoc, char const* endDoc,
-      Value* root, std::string* errs) override {
+      Value* root, std::string* errs) {
     bool ok = reader_.parse(beginDoc, endDoc, *root, collectComments_);
     if (errs) {
       *errs = reader_.getFormattedErrorMessages();
@@ -1978,7 +1782,6 @@ void CharReaderBuilder::strictMode(Json::Value* settings)
   (*settings)["allowDroppedNullPlaceholders"] = false;
   (*settings)["allowNumericKeys"] = false;
   (*settings)["allowSingleQuotes"] = false;
-  (*settings)["stackLimit"] = 1000;
   (*settings)["failIfExtra"] = true;
   (*settings)["rejectDupKeys"] = true;
   (*settings)["allowSpecialFloats"] = false;
@@ -2027,7 +1830,7 @@ std::istream& operator>>(std::istream& sin, Value& root) {
             "Error from reader: %s",
             errs.c_str());
 
-    throwRuntimeError(errs);
+    throwRuntimeError("reader error");
   }
   return sin;
 }

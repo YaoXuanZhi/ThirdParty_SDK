@@ -112,12 +112,12 @@ public:
   Json::Value settings_;
 
   StreamWriterBuilder();
-  ~StreamWriterBuilder() override;
+  virtual ~StreamWriterBuilder();
 
   /**
    * \throw std::exception if something goes wrong (e.g. invalid settings)
    */
-  StreamWriter* newStreamWriter() const override;
+  virtual StreamWriter* newStreamWriter() const;
 
   /** \return true if 'settings' are legal and consistent;
    *   otherwise, indicate bad settings via 'invalid'.
@@ -158,29 +158,18 @@ class JSON_API FastWriter : public Writer {
 
 public:
   FastWriter();
-  ~FastWriter() override {}
+  virtual ~FastWriter() {}
 
   void enableYAMLCompatibility();
 
-  /** \brief Drop the "null" string from the writer's output for nullValues.
-   * Strictly speaking, this is not valid JSON. But when the output is being
-   * fed to a browser's Javascript, it makes for smaller output and the
-   * browser can handle the output just fine.
-   */
-  void dropNullPlaceholders();
-
-  void omitEndingLineFeed();
-
 public: // overridden from Writer
-  std::string write(const Value& root) override;
+  virtual std::string write(const Value& root);
 
 private:
   void writeValue(const Value& value);
 
   std::string document_;
   bool yamlCompatiblityEnabled_;
-  bool dropNullPlaceholders_;
-  bool omitEndingLineFeed_;
 };
 
 /** \brief Writes a Value in <a HREF="http://www.json.org">JSON</a> format in a
@@ -210,14 +199,14 @@ private:
 class JSON_API StyledWriter : public Writer {
 public:
   StyledWriter();
-  ~StyledWriter() override {}
+  virtual ~StyledWriter() {}
 
 public: // overridden from Writer
   /** \brief Serialize a Value in <a HREF="http://www.json.org">JSON</a> format.
    * \param root Value to serialize.
    * \return String containing the JSON document that represents the root value.
    */
-  std::string write(const Value& root) override;
+  virtual std::string write(const Value& root);
 
 private:
   void writeValue(const Value& value);
