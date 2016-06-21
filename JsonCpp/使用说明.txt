@@ -1,0 +1,7 @@
+假设在使用此库时，遇到error C2589: “(”: “::”右边的非法标记；error C2059: 语法错误 : “::”错误时，请参考http://blog.csdn.net/xidianzhimeng/article/details/21181279
+
+建议采用第二种解决方式：
+全部将
+std::max改成(std::max)
+std::min改成(std::min)
+或者添加上NOMINMAX预处理宏
