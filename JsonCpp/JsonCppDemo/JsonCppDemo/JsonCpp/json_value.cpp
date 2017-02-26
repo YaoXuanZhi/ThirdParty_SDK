@@ -19,6 +19,12 @@
 #include <cstddef> // size_t
 #include <algorithm> // min()
 
+#if _MSC_VER == 1200
+#ifndef min
+#define min(x,y) ((x)<(y)? x:y)
+#endif
+#endif
+
 #define JSON_ASSERT_UNREACHABLE assert(false)
 
 namespace Json {
@@ -29,13 +35,24 @@ namespace Json {
 #if defined(__ARMEL__)
 #define ALIGNAS(byte_alignment) __attribute__((aligned(byte_alignment)))
 #else
-// This exists for binary compatibility only. Use nullRef.
-const Value Value::null;
 #define ALIGNAS(byte_alignment)
 #endif
-static const unsigned char ALIGNAS(8) kNull[sizeof(Value)] = { 0 };
-const unsigned char& kNullRef = kNull[0];
-const Value& Value::nullRef = reinterpret_cast<const Value&>(kNullRef);
+//static const unsigned char ALIGNAS(8) kNull[sizeof(Value)] = { 0 };
+//const unsigned char& kNullRef = kNull[0];
+//const Value& Value::null = reinterpret_cast<const Value&>(kNullRef);
+//const Value& Value::nullRef = null;
+
+// static
+Value const& Value::nullSingleton()
+{
+ static Value const nullStatic;
+ return nullStatic;
+}
+
+// for backwards compatibility, we'll leave these global references around, but DO NOT
+// use them in JSONCPP library code any more!
+Value const& Value::null = Value::nullSingleton();
+Value const& Value::nullRef = Value::nullSingleton();
 
 const Int Value::minInt = Int(~(UInt(-1) / 2));
 const Int Value::maxInt = Int(UInt(-1) / 2);
@@ -56,11 +73,14 @@ const LargestUInt Value::maxLargestUInt = LargestUInt(-1);
 #if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
 template <typename T, typename U>
 static inline bool InRange(double d, T min, U max) {
+  // The casts can lose precision, but we are looking only for
+  // an approximate range. Might fail on edge cases though. ~cdunn
+  //return d >= static_cast<double>(min) && d <= static_cast<double>(max);
   return d >= min && d <= max;
 }
 #else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
 static inline double integerToDouble(Json::UInt64 value) {
-  return static_cast<double>(Int64(value / 2)) * 2.0 + Int64(value & 1);
+  return static_cast<double>(Int64(value / 2)) * 2.0 + static_cast<double>(Int64(value & 1));
 }
 
 template <typename T> static inline double integerToDouble(T value) {
@@ -81,10 +101,11 @@ static inline bool InRange(double d, T min, U max) {
  * @return Pointer on the duplicate instance of string.
  */
 static inline char* duplicateStringValue(const char* value,
-                                         size_t length) {
+                                         size_t length)
+{
   // Avoid an integer overflow in the call to malloc below by limiting length
   // to a sane value.
-  if (length >= (size_t)Value::maxInt)
+  if (length >= static_cast<size_t>(Value::maxInt))
     length = Value::maxInt - 1;
 
   char* newString = static_cast<char*>(malloc(length + 1));
@@ -106,9 +127,12 @@ static inline char* duplicateAndPrefixStringValue(
 {
   // Avoid an integer overflow in the call to malloc below by limiting length
   // to a sane value.
-  JSON_ASSERT_MESSAGE(length <= (unsigned)Value::maxInt - sizeof(unsigned) - 1U,
-                      "in Json::Value::duplicateAndPrefixStringValue(): "
-                      "length too big for prefixing");
+  //JSON_ASSERT_MESSAGE(length <= static_cast<unsigned>(Value::maxInt) - sizeof(unsigned) - 1U,
+  //                    "in Json::Value::duplicateAndPrefixStringValue(): "
+  //                    "length too big for prefixing");
+  assert((length <= static_cast<unsigned>(Value::maxInt) - sizeof(unsigned) - 1U,
+	  "in Json::Value::duplicateAndPrefixStringValue(): "
+	  "length too big for prefixing"));
   unsigned actualLength = length + static_cast<unsigned>(sizeof(unsigned)) + 1U;
   char* newString = static_cast<char*>(malloc(actualLength));
   if (newString == 0) {
@@ -135,7 +159,29 @@ inline static void decodePrefixedString(
 }
 /** Free the string duplicated by duplicateStringValue()/duplicateAndPrefixStringValue().
  */
-static inline void releaseStringValue(char* value) { free(value); }
+#if JSONCPP_USING_SECURE_MEMORY
+static inline void releasePrefixedStringValue(char* value) {
+  unsigned length = 0;
+  char const* valueDecoded;
+  decodePrefixedString(true, value, &length, &valueDecoded);
+  size_t const size = sizeof(unsigned) + length + 1U;
+  memset(value, 0, size);
+  free(value);
+}
+static inline void releaseStringValue(char* value, unsigned length) {
+  // length==0 => we allocated the strings memory
+  size_t size = (length==0) ? strlen(value) : length;
+  memset(value, 0, size);
+  free(value);
+}
+#else // !JSONCPP_USING_SECURE_MEMORY
+static inline void releasePrefixedStringValue(char* value) {
+  free(value);
+}
+static inline void releaseStringValue(char* value, unsigned) {
+  free(value);
+}
+#endif // JSONCPP_USING_SECURE_MEMORY
 
 } // namespace Json
 
@@ -153,7 +199,7 @@ static inline void releaseStringValue(char* value) { free(value); }
 
 namespace Json {
 
-Exception::Exception(std::string const& msg)
+Exception::Exception(JSONCPP_STRING const& msg)
   : msg_(msg)
 {}
 Exception::~Exception() throw()
@@ -162,17 +208,17 @@ char const* Exception::what() const throw()
 {
   return msg_.c_str();
 }
-RuntimeError::RuntimeError(std::string const& msg)
+RuntimeError::RuntimeError(JSONCPP_STRING const& msg)
   : Exception(msg)
 {}
-LogicError::LogicError(std::string const& msg)
+LogicError::LogicError(JSONCPP_STRING const& msg)
   : Exception(msg)
 {}
-JSONCPP_NORETURN void throwRuntimeError(std::string const& msg)
+JSONCPP_NORETURN void throwRuntimeError(JSONCPP_STRING const& msg)
 {
   throw RuntimeError(msg);
 }
-JSONCPP_NORETURN void throwLogicError(std::string const& msg)
+JSONCPP_NORETURN void throwLogicError(JSONCPP_STRING const& msg)
 {
   throw LogicError(msg);
 }
@@ -185,22 +231,26 @@ JSONCPP_NORETURN void throwLogicError(std::string const& msg)
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
 
-Value::CommentInfo::CommentInfo() : comment_(0) {}
+Value::CommentInfo::CommentInfo() : comment_(0)
+{}
 
 Value::CommentInfo::~CommentInfo() {
   if (comment_)
-    releaseStringValue(comment_);
+    releaseStringValue(comment_, 0u);
 }
 
 void Value::CommentInfo::setComment(const char* text, size_t len) {
   if (comment_) {
-    releaseStringValue(comment_);
+    releaseStringValue(comment_, 0u);
     comment_ = 0;
   }
   JSON_ASSERT(text != 0);
-  JSON_ASSERT_MESSAGE(
-      text[0] == '\0' || text[0] == '/',
-      "in Json::Value::setComment(): Comments must start with /");
+  //JSON_ASSERT_MESSAGE(
+  //    text[0] == '\0' || text[0] == '/',
+  //    "in Json::Value::setComment(): Comments must start with /");
+  assert(
+	  (text[0] == '\0' || text[0] == '/',
+		  "in Json::Value::setComment(): Comments must start with /"));
   // It seems that /**/ style comments are acceptable as well.
   comment_ = duplicateStringValue(text, len);
 }
@@ -219,28 +269,34 @@ void Value::CommentInfo::setComment(const char* text, size_t len) {
 Value::CZString::CZString(ArrayIndex aindex) : cstr_(0), index_(aindex) {}
 
 Value::CZString::CZString(char const* str, unsigned ulength, DuplicationPolicy allocate)
-    : cstr_(str)
-{
+    : cstr_(str) {
   // allocate != duplicate
   storage_.policy_ = allocate & 0x3;
   storage_.length_ = ulength & 0x3FFFFFFF;
 }
 
-Value::CZString::CZString(const CZString& other)
-    : cstr_(other.storage_.policy_ != noDuplication && other.cstr_ != 0
-                ? duplicateStringValue(other.cstr_, other.storage_.length_)
-                : other.cstr_)
-{
-  storage_.policy_ = (other.cstr_
+Value::CZString::CZString(const CZString& other) {
+  cstr_ = (other.storage_.policy_ != noDuplication && other.cstr_ != 0
+				 ? duplicateStringValue(other.cstr_, other.storage_.length_)
+				 : other.cstr_);
+  storage_.policy_ = static_cast<unsigned>(other.cstr_
                  ? (static_cast<DuplicationPolicy>(other.storage_.policy_) == noDuplication
                      ? noDuplication : duplicate)
-                 : static_cast<DuplicationPolicy>(other.storage_.policy_));
+                 : static_cast<DuplicationPolicy>(other.storage_.policy_)) & 3U;
   storage_.length_ = other.storage_.length_;
 }
 
+#if JSON_HAS_RVALUE_REFERENCES
+Value::CZString::CZString(CZString&& other)
+  : cstr_(other.cstr_), index_(other.index_) {
+  other.cstr_ = nullptr;
+}
+#endif
+
 Value::CZString::~CZString() {
-  if (cstr_ && storage_.policy_ == duplicate)
-    releaseStringValue(const_cast<char*>(cstr_));
+  if (cstr_ && storage_.policy_ == duplicate) {
+	  releaseStringValue(const_cast<char*>(cstr_), storage_.length_ + 1u); //+1 for null terminating character for sake of completeness but not actually necessary
+  }
 }
 
 void Value::CZString::swap(CZString& other) {
@@ -259,7 +315,13 @@ bool Value::CZString::operator<(const CZString& other) const {
   // Assume both are strings.
   unsigned this_len = this->storage_.length_;
   unsigned other_len = other.storage_.length_;
+#if _MSC_VER == 1200
+	unsigned min_len = min(this_len, other_len);
+#else
   unsigned min_len = (std::min)(this_len, other_len);
+#endif
+
+  JSON_ASSERT(this->cstr_ && other.cstr_);
   int comp = memcmp(this->cstr_, other.cstr_, min_len);
   if (comp < 0) return true;
   if (comp > 0) return false;
@@ -273,6 +335,7 @@ bool Value::CZString::operator==(const CZString& other) const {
   unsigned this_len = this->storage_.length_;
   unsigned other_len = other.storage_.length_;
   if (this_len != other_len) return false;
+  JSON_ASSERT(this->cstr_ && other.cstr_);
   int comp = memcmp(this->cstr_, other.cstr_, this_len);
   return comp == 0;
 }
@@ -297,6 +360,7 @@ bool Value::CZString::isStaticString() const { return storage_.policy_ == noDupl
  * This optimization is used in ValueInternalMap fast allocator.
  */
 Value::Value(ValueType vtype) {
+  static char const empty[] = "";
   initBasic(vtype);
   switch (vtype) {
   case nullValue:
@@ -309,7 +373,8 @@ Value::Value(ValueType vtype) {
     value_.real_ = 0.0;
     break;
   case stringValue:
-    value_.string_ = 0;
+    // allocated_ == false, so this is safe.
+    value_.string_ = const_cast<char*>(static_cast<char const*>(empty));
     break;
   case arrayValue:
   case objectValue:
@@ -359,7 +424,7 @@ Value::Value(const char* beginValue, const char* endValue) {
       duplicateAndPrefixStringValue(beginValue, static_cast<unsigned>(endValue - beginValue));
 }
 
-Value::Value(const std::string& value) {
+Value::Value(const JSONCPP_STRING& value) {
   initBasic(stringValue, true);
   value_.string_ =
       duplicateAndPrefixStringValue(value.data(), static_cast<unsigned>(value.length()));
@@ -385,7 +450,7 @@ Value::Value(bool value) {
 Value::Value(Value const& other)
     : type_(other.type_), allocated_(false)
       ,
-      comments_(0)
+      comments_(0), start_(other.start_), limit_(other.limit_)
 {
   switch (type_) {
   case nullValue:
@@ -426,6 +491,14 @@ Value::Value(Value const& other)
   }
 }
 
+#if JSON_HAS_RVALUE_REFERENCES
+// Move constructor
+Value::Value(Value&& other) {
+  initBasic(nullValue);
+  swap(other);
+}
+#endif
+
 Value::~Value() {
   switch (type_) {
   case nullValue:
@@ -436,7 +509,7 @@ Value::~Value() {
     break;
   case stringValue:
     if (allocated_)
-      releaseStringValue(value_.string_);
+      releasePrefixedStringValue(value_.string_);
     break;
   case arrayValue:
   case objectValue:
@@ -446,13 +519,13 @@ Value::~Value() {
     JSON_ASSERT_UNREACHABLE;
   }
 
-  if (comments_)
-    delete[] comments_;
+  delete[] comments_;
+
+  value_.uint_ = 0;
 }
 
-Value &Value::operator=(const Value &other) {
-  Value temp(other);
-  swap(temp);
+Value& Value::operator=(Value other) {
+  swap(other);
   return *this;
 }
 
@@ -469,6 +542,8 @@ void Value::swapPayload(Value& other) {
 void Value::swap(Value& other) {
   swapPayload(other);
   std::swap(comments_, other.comments_);
+  std::swap(start_, other.start_);
+  std::swap(limit_, other.limit_);
 }
 
 ValueType Value::type() const { return type_; }
@@ -508,7 +583,13 @@ bool Value::operator<(const Value& other) const {
     char const* other_str;
     decodePrefixedString(this->allocated_, this->value_.string_, &this_len, &this_str);
     decodePrefixedString(other.allocated_, other.value_.string_, &other_len, &other_str);
-    unsigned min_len = (std::min)(this_len, other_len);
+#if _MSC_VER == 1200
+	unsigned min_len = min(this_len, other_len);
+#else
+  unsigned min_len = (std::min)(this_len, other_len);
+#endif
+
+    JSON_ASSERT(this_str && other_str);
     int comp = memcmp(this_str, other_str, min_len);
     if (comp < 0) return true;
     if (comp > 0) return false;
@@ -564,6 +645,7 @@ bool Value::operator==(const Value& other) const {
     decodePrefixedString(this->allocated_, this->value_.string_, &this_len, &this_str);
     decodePrefixedString(other.allocated_, other.value_.string_, &other_len, &other_str);
     if (this_len != other_len) return false;
+    JSON_ASSERT(this_str && other_str);
     int comp = memcmp(this_str, other_str, this_len);
     return comp == 0;
   }
@@ -580,14 +662,28 @@ bool Value::operator==(const Value& other) const {
 bool Value::operator!=(const Value& other) const { return !(*this == other); }
 
 const char* Value::asCString() const {
-  JSON_ASSERT_MESSAGE(type_ == stringValue,
-                      "in Json::Value::asCString(): requires stringValue");
+  //JSON_ASSERT_MESSAGE(type_ == stringValue,
+  //                    "in Json::Value::asCString(): requires stringValue");
+	assert((type_ == stringValue,
+		"in Json::Value::asCString(): requires stringValue"));
   if (value_.string_ == 0) return 0;
   unsigned this_len;
   char const* this_str;
   decodePrefixedString(this->allocated_, this->value_.string_, &this_len, &this_str);
   return this_str;
 }
+
+#if JSONCPP_USING_SECURE_MEMORY
+unsigned Value::getCStringLength() const {
+  JSON_ASSERT_MESSAGE(type_ == stringValue,
+	                  "in Json::Value::asCString(): requires stringValue");
+  if (value_.string_ == 0) return 0;
+  unsigned this_len;
+  char const* this_str;
+  decodePrefixedString(this->allocated_, this->value_.string_, &this_len, &this_str);
+  return this_len;
+}
+#endif
 
 bool Value::getString(char const** str, char const** cend) const {
   if (type_ != stringValue) return false;
@@ -598,7 +694,7 @@ bool Value::getString(char const** str, char const** cend) const {
   return true;
 }
 
-std::string Value::asString() const {
+JSONCPP_STRING Value::asString() const {
   switch (type_) {
   case nullValue:
     return "";
@@ -608,7 +704,7 @@ std::string Value::asString() const {
     unsigned this_len;
     char const* this_str;
     decodePrefixedString(this->allocated_, this->value_.string_, &this_len, &this_str);
-    return std::string(this_str, this_len);
+    return JSONCPP_STRING(this_str, this_len);
   }
   case booleanValue:
     return value_.bool_ ? "true" : "false";
@@ -619,8 +715,10 @@ std::string Value::asString() const {
   case realValue:
     return valueToString(value_.real_);
   default:
-    JSON_FAIL_MESSAGE("Type is not convertible to string");
+	  //JSON_FAIL_MESSAGE("Type is not convertible to string");
+	  assert("Type is not convertible to string");
   }
+  return "";
 }
 
 #ifdef JSON_USE_CPPTL
@@ -636,14 +734,18 @@ CppTL::ConstString Value::asConstString() const {
 Value::Int Value::asInt() const {
   switch (type_) {
   case intValue:
-    JSON_ASSERT_MESSAGE(isInt(), "LargestInt out of Int range");
+    //JSON_ASSERT_MESSAGE(isInt(), "LargestInt out of Int range");
+	  assert((isInt(), "LargestInt out of Int range"));
     return Int(value_.int_);
   case uintValue:
-    JSON_ASSERT_MESSAGE(isInt(), "LargestUInt out of Int range");
+	  //JSON_ASSERT_MESSAGE(isInt(), "LargestUInt out of Int range");
+	  assert((isInt(), "LargestUInt out of Int range"));
     return Int(value_.uint_);
   case realValue:
-    JSON_ASSERT_MESSAGE(InRange(value_.real_, minInt, maxInt),
-                        "double out of Int range");
+    //JSON_ASSERT_MESSAGE(InRange(value_.real_, minInt, maxInt),
+    //                    "double out of Int range");
+	  assert((InRange(value_.real_, minInt, maxInt),
+		  "double out of Int range"));
     return Int(value_.real_);
   case nullValue:
     return 0;
@@ -652,20 +754,26 @@ Value::Int Value::asInt() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to Int.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to Int.");
+  assert((false, "Value is not convertible to Int."));
+  return 0;
 }
 
 Value::UInt Value::asUInt() const {
   switch (type_) {
   case intValue:
-    JSON_ASSERT_MESSAGE(isUInt(), "LargestInt out of UInt range");
+	  //JSON_ASSERT_MESSAGE(isUInt(), "LargestInt out of UInt range");
+	  assert((isUInt(), "LargestInt out of UInt range"));
     return UInt(value_.int_);
   case uintValue:
-    JSON_ASSERT_MESSAGE(isUInt(), "LargestUInt out of UInt range");
+	  //JSON_ASSERT_MESSAGE(isUInt(), "LargestUInt out of UInt range");
+	  assert((isUInt(), "LargestUInt out of UInt range"));
     return UInt(value_.uint_);
   case realValue:
-    JSON_ASSERT_MESSAGE(InRange(value_.real_, 0, maxUInt),
-                        "double out of UInt range");
+    //JSON_ASSERT_MESSAGE(InRange(value_.real_, 0, maxUInt),
+    //                    "double out of UInt range");
+	  assert((InRange(value_.real_, 0, maxUInt),
+		  "double out of UInt range"));
     return UInt(value_.real_);
   case nullValue:
     return 0;
@@ -674,7 +782,9 @@ Value::UInt Value::asUInt() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to UInt.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to UInt.");
+  assert((false, "Value is not convertible to UInt."));
+  return 0;
 }
 
 #if defined(JSON_HAS_INT64)
@@ -684,11 +794,14 @@ Value::Int64 Value::asInt64() const {
   case intValue:
     return Int64(value_.int_);
   case uintValue:
-    JSON_ASSERT_MESSAGE(isInt64(), "LargestUInt out of Int64 range");
+    //JSON_ASSERT_MESSAGE(isInt64(), "LargestUInt out of Int64 range");
+	  assert((isInt64(), "LargestUInt out of Int64 range"));
     return Int64(value_.uint_);
   case realValue:
-    JSON_ASSERT_MESSAGE(InRange(value_.real_, minInt64, maxInt64),
-                        "double out of Int64 range");
+    //JSON_ASSERT_MESSAGE(InRange(value_.real_, minInt64, maxInt64),
+    //                    "double out of Int64 range");
+	  assert((InRange(value_.real_, minInt64, maxInt64),
+		  "double out of Int64 range"));
     return Int64(value_.real_);
   case nullValue:
     return 0;
@@ -697,19 +810,24 @@ Value::Int64 Value::asInt64() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to Int64.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to Int64.");
+  assert((false, "Value is not convertible to Int64."));
+  return 0;
 }
 
 Value::UInt64 Value::asUInt64() const {
   switch (type_) {
   case intValue:
-    JSON_ASSERT_MESSAGE(isUInt64(), "LargestInt out of UInt64 range");
+	  //JSON_ASSERT_MESSAGE(isUInt64(), "LargestInt out of UInt64 range");
+	  assert((isUInt64(), "LargestInt out of UInt64 range"));
     return UInt64(value_.int_);
   case uintValue:
     return UInt64(value_.uint_);
   case realValue:
-    JSON_ASSERT_MESSAGE(InRange(value_.real_, 0, maxUInt64),
-                        "double out of UInt64 range");
+    //JSON_ASSERT_MESSAGE(InRange(value_.real_, 0, maxUInt64),
+    //                    "double out of UInt64 range");
+	  assert((InRange(value_.real_, 0, maxUInt64),
+		  "double out of UInt64 range"));
     return UInt64(value_.real_);
   case nullValue:
     return 0;
@@ -718,8 +836,11 @@ Value::UInt64 Value::asUInt64() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to UInt64.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to UInt64.");
+  assert(("Value is not convertible to UInt64."));
+  return 0;
 }
+
 #endif // if defined(JSON_HAS_INT64)
 
 LargestInt Value::asLargestInt() const {
@@ -757,7 +878,9 @@ double Value::asDouble() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to double.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to double.");
+  assert((false, ("Value is not convertible to double.")));
+  return 0.0;
 }
 
 float Value::asFloat() const {
@@ -768,7 +891,8 @@ float Value::asFloat() const {
 #if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
     return static_cast<float>(value_.uint_);
 #else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
-    return integerToDouble(value_.uint_);
+    // This can fail (silently?) if the value is bigger than MAX_FLOAT.
+    return static_cast<float>(integerToDouble(value_.uint_));
 #endif // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
   case realValue:
     return static_cast<float>(value_.real_);
@@ -779,7 +903,9 @@ float Value::asFloat() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to float.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to float.");
+  assert((false, "Value is not convertible to float."));
+  return 0.0;
 }
 
 bool Value::asBool() const {
@@ -798,7 +924,9 @@ bool Value::asBool() const {
   default:
     break;
   }
-  JSON_FAIL_MESSAGE("Value is not convertible to bool.");
+  //JSON_FAIL_MESSAGE("Value is not convertible to bool.");
+  assert((false, "Value is not convertible to bool."));
+  return false;
 }
 
 bool Value::isConvertibleTo(ValueType other) const {
@@ -868,9 +996,14 @@ bool Value::empty() const {
 bool Value::operator!() const { return isNull(); }
 
 void Value::clear() {
-  JSON_ASSERT_MESSAGE(type_ == nullValue || type_ == arrayValue ||
-                          type_ == objectValue,
-                      "in Json::Value::clear(): requires complex value");
+  //JSON_ASSERT_MESSAGE(type_ == nullValue || type_ == arrayValue ||
+  //                        type_ == objectValue,
+  //                    "in Json::Value::clear(): requires complex value");
+	assert((type_ == nullValue || type_ == arrayValue ||
+		type_ == objectValue,
+		"in Json::Value::clear(): requires complex value"));
+  start_ = 0;
+  limit_ = 0;
   switch (type_) {
   case arrayValue:
   case objectValue:
@@ -882,8 +1015,10 @@ void Value::clear() {
 }
 
 void Value::resize(ArrayIndex newSize) {
-  JSON_ASSERT_MESSAGE(type_ == nullValue || type_ == arrayValue,
-                      "in Json::Value::resize(): requires arrayValue");
+  //JSON_ASSERT_MESSAGE(type_ == nullValue || type_ == arrayValue,
+  //                    "in Json::Value::resize(): requires arrayValue");
+	assert((type_ == nullValue || type_ == arrayValue,
+		"in Json::Value::resize(): requires arrayValue"));
   if (type_ == nullValue)
     *this = Value(arrayValue);
   ArrayIndex oldSize = size();
@@ -895,14 +1030,17 @@ void Value::resize(ArrayIndex newSize) {
     for (ArrayIndex index = newSize; index < oldSize; ++index) {
       value_.map_->erase(index);
     }
-    assert(size() == newSize);
+    JSON_ASSERT(size() == newSize);
   }
 }
 
 Value& Value::operator[](ArrayIndex index) {
-  JSON_ASSERT_MESSAGE(
-      type_ == nullValue || type_ == arrayValue,
-      "in Json::Value::operator[](ArrayIndex): requires arrayValue");
+  //JSON_ASSERT_MESSAGE(
+  //    type_ == nullValue || type_ == arrayValue,
+  //    "in Json::Value::operator[](ArrayIndex): requires arrayValue");
+	assert((
+		type_ == nullValue || type_ == arrayValue,
+		"in Json::Value::operator[](ArrayIndex): requires arrayValue"));
   if (type_ == nullValue)
     *this = Value(arrayValue);
   CZString key(index);
@@ -910,35 +1048,44 @@ Value& Value::operator[](ArrayIndex index) {
   if (it != value_.map_->end() && (*it).first == key)
     return (*it).second;
 
-  ObjectValues::value_type defaultValue(key, nullRef);
+  ObjectValues::value_type defaultValue(key, nullSingleton());
   it = value_.map_->insert(it, defaultValue);
   return (*it).second;
 }
 
 Value& Value::operator[](int index) {
-  JSON_ASSERT_MESSAGE(
-      index >= 0,
-      "in Json::Value::operator[](int index): index cannot be negative");
+  //JSON_ASSERT_MESSAGE(
+  //    index >= 0,
+  //    "in Json::Value::operator[](int index): index cannot be negative");
+	assert((
+		index >= 0,
+		"in Json::Value::operator[](int index): index cannot be negative"));
   return (*this)[ArrayIndex(index)];
 }
 
 const Value& Value::operator[](ArrayIndex index) const {
-  JSON_ASSERT_MESSAGE(
-      type_ == nullValue || type_ == arrayValue,
-      "in Json::Value::operator[](ArrayIndex)const: requires arrayValue");
+  //JSON_ASSERT_MESSAGE(
+  //    type_ == nullValue || type_ == arrayValue,
+  //    "in Json::Value::operator[](ArrayIndex)const: requires arrayValue");
+	assert((
+		type_ == nullValue || type_ == arrayValue,
+		"in Json::Value::operator[](ArrayIndex)const: requires arrayValue"));
   if (type_ == nullValue)
-    return nullRef;
+    return nullSingleton();
   CZString key(index);
   ObjectValues::const_iterator it = value_.map_->find(key);
   if (it == value_.map_->end())
-    return nullRef;
+    return nullSingleton();
   return (*it).second;
 }
 
 const Value& Value::operator[](int index) const {
-  JSON_ASSERT_MESSAGE(
-      index >= 0,
-      "in Json::Value::operator[](int index) const: index cannot be negative");
+  //JSON_ASSERT_MESSAGE(
+  //    index >= 0,
+  //    "in Json::Value::operator[](int index) const: index cannot be negative");
+	assert((
+		index >= 0,
+		"in Json::Value::operator[](int index) const: index cannot be negative"));
   return (*this)[ArrayIndex(index)];
 }
 
@@ -946,15 +1093,20 @@ void Value::initBasic(ValueType vtype, bool allocated) {
   type_ = vtype;
   allocated_ = allocated;
   comments_ = 0;
+  start_ = 0;
+  limit_ = 0;
 }
 
 // Access an object value by name, create a null member if it does not exist.
 // @pre Type of '*this' is object or null.
 // @param key is null-terminated.
 Value& Value::resolveReference(const char* key) {
-  JSON_ASSERT_MESSAGE(
-      type_ == nullValue || type_ == objectValue,
-      "in Json::Value::resolveReference(): requires objectValue");
+	//JSON_ASSERT_MESSAGE(
+	//	type_ == nullValue || type_ == objectValue,
+	//	"in Json::Value::resolveReference(): requires objectValue");
+	assert((
+		type_ == nullValue || type_ == objectValue,
+		"in Json::Value::resolveReference(): requires objectValue"));
   if (type_ == nullValue)
     *this = Value(objectValue);
   CZString actualKey(
@@ -963,7 +1115,7 @@ Value& Value::resolveReference(const char* key) {
   if (it != value_.map_->end() && (*it).first == actualKey)
     return (*it).second;
 
-  ObjectValues::value_type defaultValue(actualKey, nullRef);
+  ObjectValues::value_type defaultValue(actualKey, nullSingleton());
   it = value_.map_->insert(it, defaultValue);
   Value& value = (*it).second;
   return value;
@@ -972,9 +1124,12 @@ Value& Value::resolveReference(const char* key) {
 // @param key is not null-terminated.
 Value& Value::resolveReference(char const* key, char const* cend)
 {
-  JSON_ASSERT_MESSAGE(
-      type_ == nullValue || type_ == objectValue,
-      "in Json::Value::resolveReference(key, end): requires objectValue");
+  //JSON_ASSERT_MESSAGE(
+  //    type_ == nullValue || type_ == objectValue,
+  //    "in Json::Value::resolveReference(key, end): requires objectValue");
+	assert((
+		type_ == nullValue || type_ == objectValue,
+		"in Json::Value::resolveReference(key, end): requires objectValue"));
   if (type_ == nullValue)
     *this = Value(objectValue);
   CZString actualKey(
@@ -983,7 +1138,7 @@ Value& Value::resolveReference(char const* key, char const* cend)
   if (it != value_.map_->end() && (*it).first == actualKey)
     return (*it).second;
 
-  ObjectValues::value_type defaultValue(actualKey, nullRef);
+  ObjectValues::value_type defaultValue(actualKey, nullSingleton());
   it = value_.map_->insert(it, defaultValue);
   Value& value = (*it).second;
   return value;
@@ -991,17 +1146,20 @@ Value& Value::resolveReference(char const* key, char const* cend)
 
 Value Value::get(ArrayIndex index, const Value& defaultValue) const {
   const Value* value = &((*this)[index]);
-  return value == &nullRef ? defaultValue : *value;
+  return value == &nullSingleton() ? defaultValue : *value;
 }
 
 bool Value::isValidIndex(ArrayIndex index) const { return index < size(); }
 
 Value const* Value::find(char const* key, char const* cend) const
 {
-  JSON_ASSERT_MESSAGE(
-      type_ == nullValue || type_ == objectValue,
-      "in Json::Value::find(key, end, found): requires objectValue or nullValue");
-  if (type_ == nullValue) return NULL;
+	//JSON_ASSERT_MESSAGE(
+	//	type_ == nullValue || type_ == objectValue,
+	//	"in Json::Value::find(key, end, found): requires objectValue or nullValue");
+	assert((
+		type_ == nullValue || type_ == objectValue,
+		"in Json::Value::find(key, end, found): requires objectValue or nullValue"));
+	if (type_ == nullValue) return NULL;
   CZString actualKey(key, static_cast<unsigned>(cend-key), CZString::noDuplication);
   ObjectValues::const_iterator it = value_.map_->find(actualKey);
   if (it == value_.map_->end()) return NULL;
@@ -1010,13 +1168,13 @@ Value const* Value::find(char const* key, char const* cend) const
 const Value& Value::operator[](const char* key) const
 {
   Value const* found = find(key, key + strlen(key));
-  if (!found) return nullRef;
+  if (!found) return nullSingleton();
   return *found;
 }
-Value const& Value::operator[](std::string const& key) const
+Value const& Value::operator[](JSONCPP_STRING const& key) const
 {
   Value const* found = find(key.data(), key.data() + key.length());
-  if (!found) return nullRef;
+  if (!found) return nullSingleton();
   return *found;
 }
 
@@ -1024,7 +1182,7 @@ Value& Value::operator[](const char* key) {
   return resolveReference(key, key + strlen(key));
 }
 
-Value& Value::operator[](const std::string& key) {
+Value& Value::operator[](const JSONCPP_STRING& key) {
   return resolveReference(key.data(), key.data() + key.length());
 }
 
@@ -1039,7 +1197,7 @@ Value& Value::operator[](const CppTL::ConstString& key) {
 Value const& Value::operator[](CppTL::ConstString const& key) const
 {
   Value const* found = find(key.c_str(), key.end_c_str());
-  if (!found) return nullRef;
+  if (!found) return nullSingleton();
   return *found;
 }
 #endif
@@ -1055,7 +1213,7 @@ Value Value::get(char const* key, Value const& defaultValue) const
 {
   return get(key, key + strlen(key), defaultValue);
 }
-Value Value::get(std::string const& key, Value const& defaultValue) const
+Value Value::get(JSONCPP_STRING const& key, Value const& defaultValue) const
 {
   return get(key.data(), key.data() + key.length(), defaultValue);
 }
@@ -1078,22 +1236,24 @@ bool Value::removeMember(const char* key, Value* removed)
 {
   return removeMember(key, key + strlen(key), removed);
 }
-bool Value::removeMember(std::string const& key, Value* removed)
+bool Value::removeMember(JSONCPP_STRING const& key, Value* removed)
 {
   return removeMember(key.data(), key.data() + key.length(), removed);
 }
 Value Value::removeMember(const char* key)
 {
-  JSON_ASSERT_MESSAGE(type_ == nullValue || type_ == objectValue,
-                      "in Json::Value::removeMember(): requires objectValue");
+  //JSON_ASSERT_MESSAGE(type_ == nullValue || type_ == objectValue,
+  //                    "in Json::Value::removeMember(): requires objectValue");
+	assert((type_ == nullValue || type_ == objectValue,
+		"in Json::Value::removeMember(): requires objectValue"));
   if (type_ == nullValue)
-    return nullRef;
+    return nullSingleton();
 
   Value removed;  // null
   removeMember(key, key + strlen(key), &removed);
   return removed; // still null if removeMember() did nothing
 }
-Value Value::removeMember(const std::string& key)
+Value Value::removeMember(const JSONCPP_STRING& key)
 {
   return removeMember(key.c_str());
 }
@@ -1137,7 +1297,7 @@ bool Value::isMember(char const* key) const
 {
   return isMember(key, key + strlen(key));
 }
-bool Value::isMember(std::string const& key) const
+bool Value::isMember(JSONCPP_STRING const& key) const
 {
   return isMember(key.data(), key.data() + key.length());
 }
@@ -1149,9 +1309,12 @@ bool Value::isMember(const CppTL::ConstString& key) const {
 #endif
 
 Value::Members Value::getMemberNames() const {
-  JSON_ASSERT_MESSAGE(
-      type_ == nullValue || type_ == objectValue,
-      "in Json::Value::getMemberNames(), value must be objectValue");
+  //JSON_ASSERT_MESSAGE(
+  //    type_ == nullValue || type_ == objectValue,
+  //    "in Json::Value::getMemberNames(), value must be objectValue");
+	assert((
+		type_ == nullValue || type_ == objectValue,
+		"in Json::Value::getMemberNames(), value must be objectValue"));
   if (type_ == nullValue)
     return Value::Members();
   Members members;
@@ -1159,7 +1322,7 @@ Value::Members Value::getMemberNames() const {
   ObjectValues::const_iterator it = value_.map_->begin();
   ObjectValues::const_iterator itEnd = value_.map_->end();
   for (; it != itEnd; ++it) {
-    members.push_back(std::string((*it).first.data(),
+    members.push_back(JSONCPP_STRING((*it).first.data(),
                                   (*it).first.length()));
   }
   return members;
@@ -1301,7 +1464,7 @@ void Value::setComment(const char* comment, CommentPlacement placement) {
   setComment(comment, strlen(comment), placement);
 }
 
-void Value::setComment(const std::string& comment, CommentPlacement placement) {
+void Value::setComment(const JSONCPP_STRING& comment, CommentPlacement placement) {
   setComment(comment.c_str(), comment.length(), placement);
 }
 
@@ -1309,13 +1472,21 @@ bool Value::hasComment(CommentPlacement placement) const {
   return comments_ != 0 && comments_[placement].comment_ != 0;
 }
 
-std::string Value::getComment(CommentPlacement placement) const {
+JSONCPP_STRING Value::getComment(CommentPlacement placement) const {
   if (hasComment(placement))
     return comments_[placement].comment_;
   return "";
 }
 
-std::string Value::toStyledString() const {
+void Value::setOffsetStart(ptrdiff_t start) { start_ = start; }
+
+void Value::setOffsetLimit(ptrdiff_t limit) { limit_ = limit; }
+
+ptrdiff_t Value::getOffsetStart() const { return start_; }
+
+ptrdiff_t Value::getOffsetLimit() const { return limit_; }
+
+JSONCPP_STRING Value::toStyledString() const {
   StyledWriter writer;
   return writer.write(*this);
 }
@@ -1383,13 +1554,13 @@ PathArgument::PathArgument(ArrayIndex index)
 PathArgument::PathArgument(const char* key)
     : key_(key), index_(), kind_(kindKey) {}
 
-PathArgument::PathArgument(const std::string& key)
+PathArgument::PathArgument(const JSONCPP_STRING& key)
     : key_(key.c_str()), index_(), kind_(kindKey) {}
 
 // class Path
 // //////////////////////////////////////////////////////////////////
 
-Path::Path(const std::string& path,
+Path::Path(const JSONCPP_STRING& path,
            const PathArgument& a1,
            const PathArgument& a2,
            const PathArgument& a3,
@@ -1404,7 +1575,7 @@ Path::Path(const std::string& path,
   makePath(path, in);
 }
 
-void Path::makePath(const std::string& path, const InArgs& in) {
+void Path::makePath(const JSONCPP_STRING& path, const InArgs& in) {
   const char* current = path.c_str();
   const char* end = current + path.length();
   InArgs::const_iterator itInArg = in.begin();
@@ -1419,23 +1590,23 @@ void Path::makePath(const std::string& path, const InArgs& in) {
           index = index * 10 + ArrayIndex(*current - '0');
         args_.push_back(index);
       }
-      if (current == end || *current++ != ']')
+      if (current == end || *++current != ']')
         invalidPath(path, int(current - path.c_str()));
     } else if (*current == '%') {
       addPathInArg(path, in, itInArg, PathArgument::kindKey);
       ++current;
-    } else if (*current == '.') {
+    } else if (*current == '.' || *current == ']') {
       ++current;
     } else {
       const char* beginName = current;
       while (current != end && !strchr("[.", *current))
         ++current;
-      args_.push_back(std::string(beginName, current));
+      args_.push_back(JSONCPP_STRING(beginName, current));
     }
   }
 }
 
-void Path::addPathInArg(const std::string& /*path*/,
+void Path::addPathInArg(const JSONCPP_STRING& /*path*/,
                         const InArgs& in,
                         InArgs::const_iterator& itInArg,
                         PathArgument::Kind kind) {
@@ -1444,11 +1615,11 @@ void Path::addPathInArg(const std::string& /*path*/,
   } else if ((*itInArg)->kind_ != kind) {
     // Error: bad argument type
   } else {
-    args_.push_back(**itInArg);
+    args_.push_back(**itInArg++);
   }
 }
 
-void Path::invalidPath(const std::string& /*path*/, int /*location*/) {
+void Path::invalidPath(const JSONCPP_STRING& /*path*/, int /*location*/) {
   // Error: invalid path.
 }
 
@@ -1459,16 +1630,19 @@ const Value& Path::resolve(const Value& root) const {
     if (arg.kind_ == PathArgument::kindIndex) {
       if (!node->isArray() || !node->isValidIndex(arg.index_)) {
         // Error: unable to resolve path (array value expected at position...
+        return Value::null;
       }
       node = &((*node)[arg.index_]);
     } else if (arg.kind_ == PathArgument::kindKey) {
       if (!node->isObject()) {
         // Error: unable to resolve path (object value expected at position...)
+        return Value::null;
       }
       node = &((*node)[arg.key_]);
-      if (node == &Value::nullRef) {
+      if (node == &Value::nullSingleton()) {
         // Error: unable to resolve path (object has no member named '' at
         // position...)
+        return Value::null;
       }
     }
   }
@@ -1487,7 +1661,7 @@ Value Path::resolve(const Value& root, const Value& defaultValue) const {
       if (!node->isObject())
         return defaultValue;
       node = &((*node)[arg.key_]);
-      if (node == &Value::nullRef)
+      if (node == &Value::nullSingleton())
         return defaultValue;
     }
   }
