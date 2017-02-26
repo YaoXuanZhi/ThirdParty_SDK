@@ -5,3 +5,5 @@
 std::max改成(std::max)
 std::min改成(std::min)
 或者添加上NOMINMAX预处理宏
+
+另外，针对VC6.0的处理，自己定义了一个宏min来处理，并且处理了一些4级警告相关的代码
