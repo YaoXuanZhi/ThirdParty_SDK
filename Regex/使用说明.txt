@@ -1,0 +1,32 @@
+### 说明
+本正则表达式库，是glibc regex库，其实际上是作为glibc开源项目的一部分，在Windows下类似的正则表达式库还有pcre。目前此正则库已经能够在VC 6.0到VS 2015之间正常编译通过了。另外，这个正则库的最新版本应该是2.7，详细下载地址如下所示：[regex-2.7-src.zip](https://sourceforge.net/projects/gnuwin32/files/regex/2.7/regex-2.7-src.zip/download?use_mirror=ncu&download=)
+[官方主页](http://gnuwin32.sourceforge.net/packages/regex.htm)
+
+### 主要改动如下所示：
+ - 由于在MSVC之中，C语言并不支持bool关键字，因此，将其统一按照如下格式进行转换
+ ```code
+ bool  --> int
+ false --> 0
+ true  --> 1
+ ```
+
+ - 为了解决`int idx = (int) (long) extra;`和`postorder (elem, mark_opt_subexp, (void *) (long) elem->token.opr.idx);`语句引起的类型长度强转时，字符串截取的问题，
+ 因此，新增了中间类型reg_intex_t来处理这两者的中间转换
+
+```c
+typedef struct
+{
+	int value;
+}reg_intex_t;
+```
+
+ - 由于早期的MSVC编译器里，C语言的局部变量的声明应该位于函数开始位置，因此对部分代码做了适当调整，并且某些函数参数没有被应用上，为了避免4级警告，因此做了以下看似弱智的修改（不过这种方法应该可以跨编译器的）
+ ```c
+ void test(int a,int b,re_dfa_t *p,unsigned char c)
+ {
+    ...
+    if(0 == p)
+       p = 0;
+    ...
+ }
+ ```
