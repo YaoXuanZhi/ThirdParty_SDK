@@ -1,0 +1,26 @@
+export DEFSPLUS=
+export INCLUDESPLUS=
+#export CFLAGSPLUS=-DSTATIC -D__STATIC__  -DPCRE_STATIC -UBUILD_PCRE_DLL -UBUILD_PCRECPP_DLL 
+#export LDFLAGSPLUS=-Wl,--static
+export CXXFLAGSPLUS = -fexceptions
+export LIBSPLUS=
+export GNUWIN32DIR=
+export STLIBS= 
+export DLLFLAG= -DDLL_EXPORT 
+sedfiles=Makefile libtool config.h
+BUILDDIR=$(shell pwd.sh | sed -e "s/\(-.*\)-[^-]*$$/\1/")
+SRCDIR=../$(shell basename $(BUILDDIR)-src)
+
+.PHONY: all 
+all: CONF MFSED
+CONF:
+	$(SRCDIR)/configure --prefix=c:/progra~1/Pcre --srcdir="$(SRCDIR)" \
+		--enable-shared --disable-static --enable-utf8 \
+		--enable-unicode-properties --enable-newline-is-any --disable-cpp
+	
+-include $(DVLDIR)/makefile.chg
+
+#	make all
+#	make check
+#	make install prefix=c:/temp/sed
+                                 

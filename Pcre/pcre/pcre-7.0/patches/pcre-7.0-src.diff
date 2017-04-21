@@ -1,0 +1,683 @@
+diff -ipuwr --binary --strip-trailing-cr -x '*.bak' -x '*.orig' -x '*.rej' -x '*.new' -x '*~' -x debian -x '*.po' -x '*.pot' pcre-7.0-orig/Makefile.in pcre-7.0-src/Makefile.in
+--- pcre-7.0-orig/Makefile.in	2006-12-19 10:31:35.000000000 +0100
++++ pcre-7.0-src/Makefile.in	2007-03-17 09:39:29.625000000 +0100
+@@ -22,8 +22,7 @@ PCREGREP_OSTYPE=-DIS_UNIX
+ # thinks is it not up-to-date when in fact it is. This setting helps when
+ # GNU "make" is being used. It presumably does no harm in other cases.
+ 
+-VPATH=.libs
+-
++VPATH=. .libs @top_srcdir@ @top_builddir@ $(resdir) 
+ 
+ #---------------------------------------------------------------------------#
+ # The following lines are modified by "configure" to insert data that it is #
+@@ -34,6 +33,7 @@ SHELL = @SHELL@
+ prefix = @prefix@
+ exec_prefix = @exec_prefix@
+ top_srcdir = @top_srcdir@
++resdir = @top_builddir@/resource
+ 
+ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+ 
+@@ -68,17 +68,23 @@ BUILD_OBJEXT = @BUILD_OBJEXT@
+ # POSIX_OBJ and POSIX_LOBJ are either set empty, or to the names of the
+ # POSIX object files.
+ 
++@ON_WINDOWS@  POSIX_LIB=libpcreposix.la
++@NOT_ON_WINDOWS@  POSIX_LIB=@POSIX_LIB@
+ POSIX_OBJ = @POSIX_OBJ@
+ POSIX_LOBJ = @POSIX_LOBJ@
++# \
++#@ON_WINDOWS@  pcreposix-dll-res.lo \
++#@ON_WINDOWS@  pcreposix-dllversion.lo
+ 
+ # The compiler, C flags, preprocessor flags, etc
+ 
+ CC = @CC@
+ CXX = @CXX@
+-CFLAGS = @CFLAGS@
+-CXXFLAGS = @CXXFLAGS@
+-LDFLAGS = @LDFLAGS@
++CFLAGS = @CPPFLAGS@ @CFLAGS@
++CXXFLAGS = @CPPFLAGS@ @CXXFLAGS@
++LDFLAGS = @LDFLAGS@ $(VERSADD)
+ CXXLDFLAGS = @CXXLDFLAGS@
++LIBS = @LIBS@
+ 
+ CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
+@@ -142,6 +148,12 @@ OBJ = pcre_chartables.@OBJEXT@ \
+   pcre_version.@OBJEXT@ \
+   pcre_xclass.@OBJEXT@ \
+   $(POSIX_OBJ)
++DLLOBJ = \
++@ON_WINDOWS@ pcre-dll-res.@OBJEXT@ \
++@ON_WINDOWS@ pcre-dllversion.@OBJEXT@
++DLLPOBJ = \
++@ON_WINDOWS@ pcreposix-dll-res.@OBJEXT@ \
++@ON_WINDOWS@ pcreposix-dllversion.@OBJEXT@
+ 
+ LOBJ = pcre_chartables.lo \
+   pcre_compile.lo \
+@@ -164,31 +176,55 @@ LOBJ = pcre_chartables.lo \
+   pcre_version.lo \
+   pcre_xclass.lo \
+   $(POSIX_LOBJ)
++LDLLOBJ = \
++@ON_WINDOWS@  pcre-dll-res.lo \
++@ON_WINDOWS@  pcre-dllversion.lo
++LDLLPOPJ = \
++@ON_WINDOWS@  pcreposix-dll-res.lo \
++@ON_WINDOWS@  pcreposix-dllversion.lo
+ 
+ CPPOBJ = pcrecpp.@OBJEXT@ \
+   pcre_scanner.@OBJEXT@ \
+-  pcre_stringpiece.@OBJEXT@
++  pcre_stringpiece.@OBJEXT@	\
++@ON_WINDOWS@  pcrecpp-dll-res.@OBJEXT@ \
++@ON_WINDOWS@  pcrecpp-dllversion.@OBJEXT@
+ 
+ CPPLOBJ = pcrecpp.lo \
+   pcre_scanner.lo \
+-  pcre_stringpiece.lo
++  pcre_stringpiece.lo \
++@ON_WINDOWS@  pcrecpp-dll-res.lo \
++@ON_WINDOWS@  pcrecpp-dllversion.lo
++DLLCPPOBJ = $(CPPLOBJ:.lo=.o)
+ 
+ CPP_TARGETS = libpcrecpp.la \
+   pcrecpp_unittest@EXEEXT@ \
+   pcre_scanner_unittest@EXEEXT@ \
+   pcre_stringpiece_unittest@EXEEXT@
+ 
+-all:            libpcre.la @POSIX_LIB@ pcretest@EXEEXT@ pcregrep@EXEEXT@ \
++.SUFFIXES:
++.SUFFIXES: .c .@OBJEXT@ .lo .rc @EXEEXT@
++
++LIBPCRE = -L. -L.libs -lpcre
++LATOOL = latool.sh
++RCTOOL = rctool.sh
++RCTOOL_COMPILE = RCTOOL
++# Rule to make compiled resource (Windows)
++.rc.@OBJEXT@:
++	windres --include-dir $(resdir) -i $< -o $@
++.rc.lo:
++	$(RCTOOL_COMPILE) $<
++
++all:            libpcre.la $(POSIX_LIB) pcretest@EXEEXT@ pcregrep@EXEEXT@ \
+ 		@MAYBE_CPP_TARGETS@ @ON_WINDOWS@ winshared
+ 
+-pcregrep@EXEEXT@: libpcre.la pcregrep.@OBJEXT@ @ON_WINDOWS@ winshared
+-		$(LINK) -o pcregrep@EXEEXT@ pcregrep.@OBJEXT@ libpcre.la
++pcregrep@EXEEXT@: libpcre.la pcregrep.@OBJEXT@ @ON_WINDOWS@ pcregrep-res.@OBJEXT@ winshared
++		$(LINK) -o pcregrep@EXEEXT@ pcregrep.@OBJEXT@ pcregrep-res.@OBJEXT@ -lpcre
+ 
+ pcretest@EXEEXT@: libpcre.la @POSIX_LIB@ pcretest.@OBJEXT@ \
+-		@ON_WINDOWS@ winshared
++		@ON_WINDOWS@ pcretest-res.@OBJEXT@ winshared
+ 		$(LINK) $(PURIFY) $(EFENCE) -o pcretest@EXEEXT@  \
+-		pcretest.@OBJEXT@ \
+-		libpcre.la @POSIX_LIB@
++		pcretest.@OBJEXT@ pcretest-res.@OBJEXT@ \
++		-lpcre @POSIX_LIB@
+ 
+ pcrecpp_unittest@EXEEXT@: libpcrecpp.la pcrecpp_unittest.@OBJEXT@ \
+ 		@ON_WINDOWS@ winshared
+@@ -210,15 +246,15 @@ pcre_stringpiece_unittest@EXEEXT@: libpc
+ 		pcre_stringpiece_unittest.@OBJEXT@ \
+ 		libpcrecpp.la @POSIX_LIB@
+ 
+-libpcre.la:     $(OBJ)
++libpcre.la:     $(OBJ) $(LDLLOBJ)
+ 		-rm -f libpcre.la
+ 		$(LINKLIB) -rpath $(LIBDIR) -version-info \
+-		'$(PCRELIBVERSION)' -o libpcre.la $(LOBJ)
++		'$(PCRELIBVERSION)' -o libpcre.la $(LOBJ) $(LDLLOBJ)
+ 
+-libpcreposix.la: libpcre.la pcreposix.@OBJEXT@
++libpcreposix.la: libpcre.la pcreposix.@OBJEXT@ $(LDLLPOPJ) #pcreposix-dll-res.lo pcreposix-dllversion.lo
+ 		-rm -f libpcreposix.la
+ 		$(LINKLIB) -rpath $(LIBDIR) libpcre.la -version-info \
+-		'$(PCREPOSIXLIBVERSION)' -o libpcreposix.la pcreposix.lo
++		'$(PCREPOSIXLIBVERSION)' -o libpcreposix.la pcreposix.lo $(LDLLPOPJ)
+ 
+ libpcrecpp.la: libpcre.la $(CPPOBJ)
+ 		-rm -f libpcrecpp.la
+@@ -382,9 +418,15 @@ pcregrep.@OBJEXT@:     $(top_srcdir)/pcr
+ 
+ # Some Windows-specific targets for MinGW. Do not use for Cygwin.
+ 
+-winshared : .libs/@WIN_PREFIX@pcre.dll .libs/@WIN_PREFIX@pcreposix.dll \
++winshared : #.libs/@WIN_PREFIX@pcre.dll .libs/@WIN_PREFIX@pcreposix.dll \
+ 		.libs/@WIN_PREFIX@pcrecpp.dll
+ 
++pcre-dllversion.lo: pcre-dllversion.c
++	$(LTCOMPILE) $<
++
++pcreposix-dllversion.lo: pcreposix-dllversion.c
++	$(LTCOMPILE) $<
++
+ .libs/@WIN_PREFIX@pcre.dll : libpcre.la
+ 	$(CC) $(CFLAGS) -shared -o $@ \
+ 	-Wl,--whole-archive .libs/libpcre.a \
+@@ -400,15 +442,17 @@ winshared : .libs/@WIN_PREFIX@pcre.dll .
+ 	-e "s#library_names=''#library_names='libpcre.dll.a'#" \
+ 	< libpcre.la > libpcre.la.tmp && \
+ 	mv -f libpcre.la.tmp libpcre.la
++	cd .libs && dll2lib	@WIN_PREFIX@pcre.dll -l @WIN_PREFIX@pcre -d @WIN_PREFIX@pcre.def
+ 
+ 
+ .libs/@WIN_PREFIX@pcreposix.dll: libpcreposix.la libpcre.la
+ 	$(CC) $(CFLAGS) -shared -o $@ \
+-	-Wl,--whole-archive .libs/libpcreposix.a \
+-	-Wl,--out-implib,.libs/@WIN_PREFIX@pcreposix.dll.a \
+-	-Wl,--output-def,.libs/@WIN_PREFIX@libpcreposix.dll-def \
+-	-Wl,--export-all-symbols \
+-	-Wl,--no-whole-archive .libs/libpcre.a
++	-Wl,--enable-stdcall-fixup \
++	-Wl,--add-stdcall-alias \
++	$(DLLPOSIXOBJ) \
++	-Wl,--out-implib,.libs/libpcreposix.dll.a \
++	-Wl,--output-def,.libs/@WIN_PREFIX@pcreposix.def \
++	-Wl,--no-whole-archive .libs/libpcre.dll.a $(VERSADD) $(LIBS)
+ 	sed -e "s#dlname=''#dlname='../bin/@WIN_PREFIX@pcreposix.dll'#" \
+ 	-e "s#library_names=''#library_names='libpcreposix.dll.a'#"\
+ 	< .libs/libpcreposix.lai > .libs/libpcreposix.lai.tmp && \
+@@ -417,14 +461,18 @@ winshared : .libs/@WIN_PREFIX@pcre.dll .
+ 	-e "s#library_names=''#library_names='libpcreposix.dll.a'#"\
+ 	< libpcreposix.la > libpcreposix.la.tmp && \
+ 	mv -f libpcreposix.la.tmp libpcreposix.la
++	cd .libs && dll2lib	@WIN_PREFIX@pcreposix.dll -l @WIN_PREFIX@pcreposix -d @WIN_PREFIX@pcreposix.def
+ 
+ .libs/@WIN_PREFIX@pcrecpp.dll: libpcrecpp.la libpcre.la
+ 	$(CXX) $(CXXFLAGS) -shared -o $@ \
+-	-Wl,--whole-archive .libs/libpcrecpp.a \
+-	-Wl,--out-implib,.libs/@WIN_PREFIX@pcrecpp.dll.a \
+-	-Wl,--output-def,.libs/@WIN_PREFIX@libpcrecpp.dll-def \
++	-Wl,--enable-stdcall-fixup \
++	-Wl,--add-stdcall-alias \
++	-Wl,--allow-multiple-definition \
++	-Wl,--whole-archive $(DLLCPPOBJ)  \
+ 	-Wl,--export-all-symbols \
+-	-Wl,--no-whole-archive .libs/libpcre.a
++	-Wl,--out-implib,.libs/libpcrecpp.dll.a \
++	-Wl,--output-def,.libs/@WIN_PREFIX@pcrecpp.dll-def \
++	-Wl,--no-whole-archive .libs/libpcre.dll.a $(VERSADD) $(LIBS)
+ 	sed -e "s#dlname=''#dlname='../bin/@WIN_PREFIX@pcrecpp.dll'#" \
+ 	-e "s#library_names=''#library_names='libpcrecpp.dll.a'#"\
+ 	< .libs/libpcrecpp.lai > .libs/libpcrecpp.lai.tmp && \
+@@ -434,21 +482,22 @@ winshared : .libs/@WIN_PREFIX@pcre.dll .
+ 	< libpcrecpp.la > libpcrecpp.la.tmp && \
+ 	mv -f libpcrecpp.la.tmp libpcrecpp.la
+ 
++#	.libs/libpcrecpp.a 
+ 
+ wininstall : winshared
+ 	$(mkinstalldirs) $(DESTDIR)$(LIBDIR)
+ 	$(mkinstalldirs) $(DESTDIR)$(BINDIR)
+-	$(INSTALL) .libs/@WIN_PREFIX@pcre.dll $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcre.dll
+-	$(INSTALL) .libs/@WIN_PREFIX@pcreposix.dll $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcreposix.dll
+-	$(INSTALL) .libs/@WIN_PREFIX@libpcreposix.dll.a $(DESTDIR)$(LIBDIR)/@WIN_PREFIX@libpcreposix.dll.a
+-	$(INSTALL) .libs/@WIN_PREFIX@libpcre.dll.a $(DESTDIR)$(LIBDIR)/@WIN_PREFIX@libpcre.dll.a
+-@HAVE_CPP@	 $(INSTALL) .libs/@WIN_PREFIX@pcrecpp.dll $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcrecpp.dll
+-@HAVE_CPP@	 $(INSTALL) .libs/@WIN_PREFIX@libpcrecpp.dll.a $(DESTDIR)$(LIBDIR)/@WIN_PREFIX@libpcrecpp.dll.a
+-	-strip -g $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcre.dll
+-	-strip -g $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcreposix.dll
+-@HAVE_CPP@	 -strip -g $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcrecpp.dll
+-	-strip $(DESTDIR)$(BINDIR)/pcregrep@EXEEXT@
+-	-strip $(DESTDIR)$(BINDIR)/pcretest@EXEEXT@
++	$(INSTALL) .libs/@WIN_PREFIX@pcre*.dll $(DESTDIR)$(BINDIR)
++	$(INSTALL) .libs/@WIN_PREFIX@pcreposix*.dll $(DESTDIR)$(BINDIR)
++#	$(INSTALL) .libs/@WIN_PREFIX@libpcreposix.dll.a $(DESTDIR)$(LIBDIR)/@WIN_PREFIX@libpcreposix.dll.a
++#	$(INSTALL) .libs/@WIN_PREFIX@libpcre.dll.a $(DESTDIR)$(LIBDIR)/@WIN_PREFIX@libpcre.dll.a
++@HAVE_CPP@	 $(INSTALL) .libs/@WIN_PREFIX@pcrecpp*.dll $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcrecpp.dll
++#@HAVE_CPP@	 $(INSTALL) .libs/@WIN_PREFIX@libpcrecpp.dll.a $(DESTDIR)$(LIBDIR)/@WIN_PREFIX@libpcrecpp.dll.a
++#	-strip -g $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcre.dll
++#	-strip -g $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcreposix.dll
++#@HAVE_CPP@	 -strip -g $(DESTDIR)$(BINDIR)/@WIN_PREFIX@pcrecpp.dll
++#	-strip $(DESTDIR)$(BINDIR)/pcregrep@EXEEXT@
++#	-strip $(DESTDIR)$(BINDIR)/pcretest@EXEEXT@
+ 
+ # An auxiliary program makes the default character table source. This is put
+ # in the current directory, NOT the $top_srcdir directory.
+@@ -521,6 +570,8 @@ install:        all @ON_WINDOWS@ wininst
+ 		$(mkinstalldirs) $(DESTDIR)$(BINDIR)
+ 		$(LIBTOOL) --mode=install $(INSTALL) pcregrep@EXEEXT@ $(DESTDIR)$(BINDIR)/pcregrep@EXEEXT@
+ 		$(LIBTOOL) --mode=install $(INSTALL) pcretest@EXEEXT@ $(DESTDIR)$(BINDIR)/pcretest@EXEEXT@
++		-strip $(DESTDIR)$(BINDIR)/pcregrep@EXEEXT@
++		-strip $(DESTDIR)$(BINDIR)/pcretest@EXEEXT@
+ 		$(INSTALL) pcre-config $(DESTDIR)$(BINDIR)/pcre-config
+ 		$(mkinstalldirs) $(DESTDIR)$(LIBDIR)/pkgconfig
+ 		$(INSTALL_DATA) libpcre.pc $(DESTDIR)$(LIBDIR)/pkgconfig/libpcre.pc
+@@ -584,7 +635,7 @@ uninstall:;     -rm -rf \
+ # made pcre_chartables.c shouldn't change, and if people have edited the tables
+ # by hand, you don't want to throw them away.
+ 
+-clean:;         -rm -rf *.@OBJEXT@ *.lo *.a *.la .libs pcretest@EXEEXT@ pcre_stringpiece_unittest@EXEEXT@ pcrecpp_unittest@EXEEXT@ pcre_scanner_unittest@EXEEXT@ pcregrep@EXEEXT@ testtry
++clean:;			-rm -rf *.@OBJEXT@ *.lo *.a *.la .libs pcretest@EXEEXT@ pcre_stringpiece_unittest@EXEEXT@ pcrecpp_unittest@EXEEXT@ pcre_scanner_unittest@EXEEXT@ pcregrep@EXEEXT@ testtry dftables@EXEEXT@
+ 
+ # But "make distclean" should get back to a virgin distribution
+ 
+@@ -601,16 +652,17 @@ check:          runtest
+ 
+ test:           runtest
+ 
+-runtest:        all @ON_WINDOWS@ @WIN_PREFIX@pcre.dll
++runtest:		  all #@ON_WINDOWS@ .libs/@WIN_PREFIX@pcre.dll
+ 		@./RunTest
+ 		@./RunGrepTest
++		@cat testtry
+ @HAVE_CPP@		 @echo ""
+ @HAVE_CPP@		 @echo "Testing C++ wrapper"
+ @HAVE_CPP@		 @echo ""; echo "Test 1++: stringpiece"
+-@HAVE_CPP@		 @./pcre_stringpiece_unittest@EXEEXT@
++@HAVE_CPP@		 PATH=.:.libs:$$PATH && ./pcre_stringpiece_unittest@EXEEXT@
+ @HAVE_CPP@		 @echo ""; echo "Test 2++: RE class"
+-@HAVE_CPP@		 @./pcrecpp_unittest@EXEEXT@
++@HAVE_CPP@		 PATH=.:.libs:$$PATH && ./pcrecpp_unittest@EXEEXT@
+ @HAVE_CPP@		 @echo ""; echo "Test 3++: Scanner class"
+-@HAVE_CPP@		 @./pcre_scanner_unittest@EXEEXT@
++@HAVE_CPP@		 PATH=.:.libs:$$PATH && ./pcre_scanner_unittest@EXEEXT@
+ 
+ # End
+diff -ipuwr --binary --strip-trailing-cr -x '*.bak' -x '*.orig' -x '*.rej' -x '*.new' -x '*~' -x debian -x '*.po' -x '*.pot' pcre-7.0-orig/RunGrepTest.in pcre-7.0-src/RunGrepTest.in
+--- pcre-7.0-orig/RunGrepTest.in	2006-12-19 10:31:35.000000000 +0100
++++ pcre-7.0-src/RunGrepTest.in	2007-03-17 10:33:40.218750000 +0100
+@@ -3,17 +3,19 @@
+ # This file is generated by configure from RunGrepTest.in. Make any changes
+ # to that file.
+ 
++PATH=.:.libs:$PATH
++
+ echo "Testing pcregrep"
+-./pcregrep -V
++pcregrep -V
+ 
+ # Run pcregrep tests. The assumption is that the PCRE tests check the library
+ # itself. What we are checking here is the file handling and options that are
+ # supported by pcregrep.
+ 
+-cf=diff
++cf="d:/progra~1/gnuwin32/bin/diff -a"
+ valgrind=
+ if [ ! -d testdata ] ; then
+-  ln -s @top_srcdir@/testdata testdata
++  cp -fpr @top_srcdir@/testdata .
+ fi
+ testdata=./testdata
+ 
+@@ -29,162 +31,162 @@ done
+ no_utf8=$?
+ 
+ echo "---------------------------- Test 1 ------------------------------" >testtry
+-$valgrind ./pcregrep PATTERN $testdata/grepinput >>testtry
++$valgrind pcregrep PATTERN $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 2 ------------------------------" >>testtry
+-$valgrind ./pcregrep '^PATTERN' $testdata/grepinput >>testtry
++$valgrind pcregrep '^PATTERN' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 3 ------------------------------" >>testtry
+-$valgrind ./pcregrep -in PATTERN $testdata/grepinput >>testtry
++$valgrind pcregrep -in PATTERN $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 4 ------------------------------" >>testtry
+-$valgrind ./pcregrep -ic PATTERN $testdata/grepinput >>testtry
++$valgrind pcregrep -ic PATTERN $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 5 ------------------------------" >>testtry
+-$valgrind ./pcregrep -in PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -in PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 6 ------------------------------" >>testtry
+-$valgrind ./pcregrep -inh PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -inh PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 7 ------------------------------" >>testtry
+-$valgrind ./pcregrep -il PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -il PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 8 ------------------------------" >>testtry
+-$valgrind ./pcregrep -l PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -l PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 9 ------------------------------" >>testtry
+-$valgrind ./pcregrep -q PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -q PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
+ echo "RC=$?" >>testtry
+ 
+ echo "---------------------------- Test 10 -----------------------------" >>testtry
+-$valgrind ./pcregrep -q NEVER-PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -q NEVER-PATTERN $testdata/grepinput $testdata/grepinputx >>testtry
+ echo "RC=$?" >>testtry
+ 
+ echo "---------------------------- Test 11 -----------------------------" >>testtry
+-$valgrind ./pcregrep -vn pattern $testdata/grepinputx >>testtry
++$valgrind pcregrep -vn pattern $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 12 -----------------------------" >>testtry
+-$valgrind ./pcregrep -ix pattern $testdata/grepinputx >>testtry
++$valgrind pcregrep -ix pattern $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 13 -----------------------------" >>testtry
+-$valgrind ./pcregrep -f$testdata/greplist $testdata/grepinputx >>testtry
++$valgrind pcregrep -f$testdata/greplist $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 14 -----------------------------" >>testtry
+-$valgrind ./pcregrep -w pat $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -w pat $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 15 -----------------------------" >>testtry
+-$valgrind ./pcregrep 'abc^*' $testdata/grepinput 2>>testtry >>testtry
++$valgrind pcregrep 'abc^*' $testdata/grepinput 2>>testtry >>testtry
+ 
+ echo "---------------------------- Test 16 -----------------------------" >>testtry
+-$valgrind ./pcregrep abc $testdata/grepinput $testdata/nonexistfile 2>>testtry >>testtry
++$valgrind pcregrep abc $testdata/grepinput $testdata/nonexistfile 2>>testtry >>testtry
+ 
+ echo "---------------------------- Test 17 -----------------------------" >>testtry
+-$valgrind ./pcregrep -M 'the\noutput' $testdata/grepinput >>testtry
++$valgrind pcregrep -M 'the\noutput' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 18 -----------------------------" >>testtry
+-$valgrind ./pcregrep -Mn '(the\noutput|dog\.\n--)' $testdata/grepinput >>testtry
++$valgrind pcregrep -Mn '(the\noutput|dog\.\n--)' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 19 -----------------------------" >>testtry
+-$valgrind ./pcregrep -Mix 'Pattern' $testdata/grepinputx >>testtry
++$valgrind pcregrep -Mix 'Pattern' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 20 -----------------------------" >>testtry
+-$valgrind ./pcregrep -Mixn 'complete pair\nof lines' $testdata/grepinputx >>testtry
++$valgrind pcregrep -Mixn 'complete pair\nof lines' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 21 -----------------------------" >>testtry
+-$valgrind ./pcregrep -nA3 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -nA3 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 22 -----------------------------" >>testtry
+-$valgrind ./pcregrep -nB3 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -nB3 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 23 -----------------------------" >>testtry
+-$valgrind ./pcregrep -C3 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -C3 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 24 -----------------------------" >>testtry
+-$valgrind ./pcregrep -A9 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -A9 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 25 -----------------------------" >>testtry
+-$valgrind ./pcregrep -nB9 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -nB9 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 26 -----------------------------" >>testtry
+-$valgrind ./pcregrep -A9 -B9 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -A9 -B9 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 27 -----------------------------" >>testtry
+-$valgrind ./pcregrep -A10 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -A10 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 28 -----------------------------" >>testtry
+-$valgrind ./pcregrep -nB10 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -nB10 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 29 -----------------------------" >>testtry
+-$valgrind ./pcregrep -C12 -B10 'four' $testdata/grepinputx >>testtry
++$valgrind pcregrep -C12 -B10 'four' $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 30 -----------------------------" >>testtry
+-$valgrind ./pcregrep -inB3 'pattern' $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -inB3 'pattern' $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 31 -----------------------------" >>testtry
+-$valgrind ./pcregrep -inA3 'pattern' $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -inA3 'pattern' $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 32 -----------------------------" >>testtry
+-$valgrind ./pcregrep -L 'fox' $testdata/grepinput $testdata/grepinputx >>testtry
++$valgrind pcregrep -L 'fox' $testdata/grepinput $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 33 -----------------------------" >>testtry
+-$valgrind ./pcregrep 'fox' $testdata/grepnonexist >>testtry 2>&1 
++$valgrind pcregrep 'fox' $testdata/grepnonexist >>testtry 2>&1 
+ echo "RC=$?" >>testtry
+ 
+ echo "---------------------------- Test 34 -----------------------------" >>testtry
+-$valgrind ./pcregrep -s 'fox' $testdata/grepnonexist >>testtry 2>&1 
++$valgrind pcregrep -s 'fox' $testdata/grepnonexist >>testtry 2>&1 
+ echo "RC=$?" >>testtry
+ 
+ echo "---------------------------- Test 35 -----------------------------" >>testtry
+-$valgrind ./pcregrep -L -r --include=grepinputx 'fox' $testdata >>testtry 
++$valgrind pcregrep -L -r --include=grepinputx 'fox' $testdata >>testtry 
+ echo "RC=$?" >>testtry
+ 
+ echo "---------------------------- Test 36 -----------------------------" >>testtry
+-$valgrind ./pcregrep -L -r --include=grepinput --exclude 'grepinput$' 'fox' $testdata >>testtry 
++$valgrind pcregrep -L -r --include=grepinput --exclude 'grepinput$' 'fox' $testdata >>testtry 
+ echo "RC=$?" >>testtry
+ 
+ echo "---------------------------- Test 37 -----------------------------" >>testtry
+-$valgrind ./pcregrep  '^(a+)*\d' $testdata/grepinput >>testtry 2>teststderr
++$valgrind pcregrep  '^(a+)*\d' $testdata/grepinput >>testtry 2>teststderr
+ echo "RC=$?" >>testtry
+ echo "======== STDERR ========" >>testtry
+ cat teststderr >>testtry
+ 
+ echo "---------------------------- Test 38 ------------------------------" >>testtry
+-$valgrind ./pcregrep '>\x00<' $testdata/grepinput >>testtry
++$valgrind pcregrep '>\x00<' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 39 ------------------------------" >>testtry
+-$valgrind ./pcregrep -A1 'before the binary zero' $testdata/grepinput >>testtry
++$valgrind pcregrep -A1 'before the binary zero' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 40 ------------------------------" >>testtry
+-$valgrind ./pcregrep -B1 'after the binary zero' $testdata/grepinput >>testtry
++$valgrind pcregrep -B1 'after the binary zero' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 41 ------------------------------" >>testtry
+-$valgrind ./pcregrep -B1 -o '\w+ the binary zero' $testdata/grepinput >>testtry
++$valgrind pcregrep -B1 -o '\w+ the binary zero' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 41 ------------------------------" >>testtry
+-$valgrind ./pcregrep -B1 -onH '\w+ the binary zero' $testdata/grepinput >>testtry
++$valgrind pcregrep -B1 -onH '\w+ the binary zero' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 42 ------------------------------" >>testtry
+-$valgrind ./pcregrep -on 'before|zero|after' $testdata/grepinput >>testtry
++$valgrind pcregrep -on 'before|zero|after' $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 43 ------------------------------" >>testtry
+-$valgrind ./pcregrep -on -e before -e zero -e after $testdata/grepinput >>testtry
++$valgrind pcregrep -on -e before -e zero -e after $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 44 ------------------------------" >>testtry
+-$valgrind ./pcregrep -on -f $testdata/greplist -e binary $testdata/grepinput >>testtry
++$valgrind pcregrep -on -f $testdata/greplist -e binary $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 45 ------------------------------" >>testtry
+-$valgrind ./pcregrep -e abc -e '(unclosed' $testdata/grepinput 2>>testtry >>testtry
++$valgrind pcregrep -e abc -e '(unclosed' $testdata/grepinput 2>>testtry >>testtry
+ 
+ echo "---------------------------- Test 46 ------------------------------" >>testtry
+-$valgrind ./pcregrep -Fx "AB.VE
++$valgrind pcregrep -Fx "AB.VE
+ elephant" $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 47 ------------------------------" >>testtry
+-$valgrind ./pcregrep -F "AB.VE
++$valgrind pcregrep -F "AB.VE
+ elephant" $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 48 ------------------------------" >>testtry
+-$valgrind ./pcregrep -F -e DATA -e "AB.VE
++$valgrind pcregrep -F -e DATA -e "AB.VE
+ elephant" $testdata/grepinput >>testtry
+ 
+ echo "---------------------------- Test 49 ------------------------------" >>testtry
+@@ -197,7 +199,8 @@ echo "---------------------------- Test 
+ $valgrind ./pcregrep --newline=crlf "^(abc|def|ghi|jkl)" $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 52 ------------------------------" >>testtry
+-$valgrind ./pcregrep --newline=cr -F "defjkl" $testdata/grepinputx >>testtry
++$valgrind ./pcregrep --newline=cr -F "def
++jkl" $testdata/grepinputx >>testtry
+ 
+ echo "---------------------------- Test 53 ------------------------------" >>testtry
+ $valgrind ./pcregrep --newline=crlf -F "xxx
+diff -ipuwr --binary --strip-trailing-cr -x '*.bak' -x '*.orig' -x '*.rej' -x '*.new' -x '*~' -x debian -x '*.po' -x '*.pot' pcre-7.0-orig/RunTest.in pcre-7.0-src/RunTest.in
+--- pcre-7.0-orig/RunTest.in	2006-12-19 10:31:35.000000000 +0100
++++ pcre-7.0-src/RunTest.in	2007-03-17 10:33:52.093750000 +0100
+@@ -5,13 +5,13 @@
+ 
+ # Run PCRE tests
+ 
+-cf=diff
++cf="d:/progra~1/gnuwin32/bin/diff -a"
+ valgrind=
+ if [ ! -d testdata ] ; then
+-  ln -s @top_srcdir@/testdata testdata
++  cp -fpr @top_srcdir@/testdata .
+ fi
+ testdata=./testdata
+-
++PATH=.:.libs:$PATH
+ 
+ # Select which tests to run; if no selection, run all
+ 
+@@ -107,13 +107,13 @@ fi
+ 
+ # Show which release
+ 
+-./pcretest /dev/null
++pcretest NUL
+ 
+ # Primary test, Perl-compatible
+ 
+ if [ $do1 = yes ] ; then
+   echo "Test 1: main functionality (Perl compatible)"
+-  $valgrind ./pcretest -q $testdata/testinput1 testtry
++  $valgrind pcretest -q $testdata/testinput1 testtry
+   if [ $? = 0 ] ; then
+     $cf testtry $testdata/testoutput1
+     if [ $? != 0 ] ; then exit 1; fi
+@@ -128,7 +128,7 @@ fi
+ if [ $do2 = yes ] ; then
+   if [ "@LINK_SIZE@" = "" -o "@LINK_SIZE@" = "-DLINK_SIZE=2" ] ; then
+     echo "Test 2: API and error handling (not Perl compatible)"
+-    $valgrind ./pcretest -q $testdata/testinput2 testtry
++    $valgrind pcretest -q $testdata/testinput2 testtry
+     if [ $? = 0 ] ; then
+       $cf testtry $testdata/testoutput2
+       if [ $? != 0 ] ; then exit 1; fi
+@@ -148,7 +148,7 @@ if [ $do3 = yes ] ; then
+   locale -a | grep '^fr_FR$' >/dev/null
+   if [ $? -eq 0 ] ; then
+     echo "Test 3: locale-specific features (using 'fr_FR' locale)"
+-    $valgrind ./pcretest -q $testdata/testinput3 testtry
++    $valgrind pcretest -q $testdata/testinput3 testtry
+     if [ $? = 0 ] ; then
+       $cf testtry $testdata/testoutput3
+       if [ $? != 0 ] ; then
+@@ -173,7 +173,7 @@ fi
+ 
+ if [ $do4 = yes ] ; then
+   echo "Test 4: UTF-8 support (Perl compatible)"
+-  $valgrind ./pcretest -q $testdata/testinput4 testtry
++  $valgrind pcretest -q $testdata/testinput4 testtry
+   if [ $? = 0 ] ; then
+     $cf testtry $testdata/testoutput4
+     if [ $? != 0 ] ; then exit 1; fi
+@@ -186,7 +186,7 @@ fi
+ if [ $do5 = yes ] ; then
+   if [ "@LINK_SIZE@" = "" -o "@LINK_SIZE@" = "-DLINK_SIZE=2" ] ; then
+     echo "Test 5: API and internals for UTF-8 support (not Perl compatible)"
+-    $valgrind ./pcretest -q $testdata/testinput5 testtry
++    $valgrind pcretest -q $testdata/testinput5 testtry
+     if [ $? = 0 ] ; then
+       $cf testtry $testdata/testoutput5
+       if [ $? != 0 ] ; then exit 1; fi
+@@ -203,7 +203,7 @@ fi
+ if [ $do6 = yes ] ; then
+   if [ "@LINK_SIZE@" = "" -o "@LINK_SIZE@" = "-DLINK_SIZE=2" ] ; then
+     echo "Test 6: Unicode property support"
+-    $valgrind ./pcretest -q $testdata/testinput6 testtry
++    $valgrind pcretest -q $testdata/testinput6 testtry
+     if [ $? = 0 ] ; then
+       $cf testtry $testdata/testoutput6
+       if [ $? != 0 ] ; then exit 1; fi
+@@ -221,7 +221,7 @@ fi
+ 
+ if [ $do7 = yes ] ; then
+   echo "Test 7: DFA matching"
+-  $valgrind ./pcretest -q -dfa $testdata/testinput7 testtry
++  $valgrind pcretest -q -dfa $testdata/testinput7 testtry
+   if [ $? = 0 ] ; then
+     $cf testtry $testdata/testoutput7
+     if [ $? != 0 ] ; then exit 1; fi
+@@ -233,7 +233,7 @@ fi
+ 
+ if [ $do8 = yes ] ; then
+   echo "Test 8: DFA matching with UTF-8"
+-  $valgrind ./pcretest -q -dfa $testdata/testinput8 testtry
++  $valgrind pcretest -q -dfa $testdata/testinput8 testtry
+   if [ $? = 0 ] ; then
+     $cf testtry $testdata/testoutput8
+     if [ $? != 0 ] ; then exit 1; fi
+@@ -245,7 +245,7 @@ fi
+ 
+ if [ $do9 = yes ] ; then
+   echo "Test 9: DFA matching with Unicode properties"
+-  $valgrind ./pcretest -q -dfa $testdata/testinput9 testtry
++  $valgrind pcretest -q -dfa $testdata/testinput9 testtry
+   if [ $? = 0 ] ; then
+     $cf testtry $testdata/testoutput9
+     if [ $? != 0 ] ; then exit 1; fi
+diff -ipuwr --binary --strip-trailing-cr -x '*.bak' -x '*.orig' -x '*.rej' -x '*.new' -x '*~' -x debian -x '*.po' -x '*.pot' pcre-7.0-orig/configure pcre-7.0-src/configure
+--- pcre-7.0-orig/configure	2006-12-19 10:31:35.000000000 +0100
++++ pcre-7.0-src/configure	2007-03-09 23:26:04.875000000 +0100
+@@ -1925,8 +1925,8 @@ ac_config_headers="$ac_config_headers co
+ POSIX_MALLOC_THRESHOLD=-DPOSIX_MALLOC_THRESHOLD=10
+ 
+ 
+-PCRE_LIB_VERSION=0:1:0
+-PCRE_POSIXLIB_VERSION=0:0:0
++PCRE_LIB_VERSION=15:0:12
++PCRE_POSIXLIB_VERSION=15:0:12
+ PCRE_CPPLIB_VERSION=0:0:0
+ 
+ 
+diff -ipuwr --binary --strip-trailing-cr -x '*.bak' -x '*.orig' -x '*.rej' -x '*.new' -x '*~' -x debian -x '*.po' -x '*.pot' pcre-7.0-orig/pcre-config.in pcre-7.0-src/pcre-config.in
+--- pcre-7.0-orig/pcre-config.in	2006-12-19 10:31:35.000000000 +0100
++++ pcre-7.0-src/pcre-config.in	2007-03-09 23:26:04.906250000 +0100
+@@ -52,10 +52,10 @@ while test $# -gt 0; do
+       echo $includes
+       ;;
+     --libs-posix)
+-      echo -L@libdir@$libR -lpcreposix -lpcre
++      echo -L@libdir@$libR -lpcreposix -lpcre @LIBS@
+       ;;
+     --libs)
+-      echo -L@libdir@$libR -lpcre
++      echo -L@libdir@$libR -lpcre @LIBS@
+       ;;
+     *)
+       echo "${usage}" 1>&2
+diff -ipuwr --binary --strip-trailing-cr -x '*.bak' -x '*.orig' -x '*.rej' -x '*.new' -x '*~' -x debian -x '*.po' -x '*.pot' pcre-7.0-orig/pcrecpp.cc pcre-7.0-src/pcrecpp.cc
+--- pcre-7.0-orig/pcrecpp.cc	2006-12-19 10:31:35.000000000 +0100
++++ pcre-7.0-src/pcrecpp.cc	2007-03-09 23:26:04.921875000 +0100
+@@ -41,9 +41,9 @@
+ // We need this to compile the proper dll on windows/msys.  This is copied
+ // from pcre_internal.h.  It would probably be better just to include that.
+ #define PCRE_DEFINITION  /* Win32 __declspec(export) trigger for .dll */
+-#include "pcre.h"
+-#include "pcre_stringpiece.h"
+ #include "pcrecpp.h"
++#include "pcre_stringpiece.h"
++#include "pcre.h"
+ 
+ 
+ namespace pcrecpp {
