@@ -2,6 +2,7 @@
 #include <iostream>
 #include <tchar.h>
 #include "TinyXML2\tinyxml2.h"
+#pragma warning(disable:4996)
 using namespace std;
 
 void BroweAllElement(tinyxml2::XMLElement* ParentElement);
@@ -62,7 +63,7 @@ void BroweAllElement(tinyxml2::XMLElement* ParentElement)
 	if (ParentElement != NULL)
 	{
 		PrintElementInfo(ParentElement);
-		if (string(ParentElement->Name()) == string("Button"))
+		if(0 == stricmp(ParentElement->Name(),"Button"))
 		{
 			ParentElement->SetName("lajfdldfj");
 		}
