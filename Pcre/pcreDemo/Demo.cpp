@@ -1,16 +1,10 @@
 #ifdef  __cplusplus  
 extern "C" {  
 #endif  
-#include "../pcre/pcre-7.0-src/pcre.h"
+#include "pcre.h"
 #ifdef  __cplusplus  
 }  
 #endif  
-
-#ifdef _DEBUG
-#pragma comment(lib,"../Debug/pcre.lib")
-#else
-#pragma comment(lib,"../Release/pcre.lib")
-#endif
 
 #include <stdio.h>
 #include <string.h>

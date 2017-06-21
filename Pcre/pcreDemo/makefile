@@ -1,18 +1,16 @@
 #本makefile文件由AutoNMaker自动生成
 ##########################下面是正式的makefile语句##########################
-COMPLIESTATICLIB=1
-
 #设置最终生成的可执行文件名称
-ProjName=pcre
+ProjName=pcreDemo
 
 #设置后缀名
-ExtName=.lib
+ExtName=.exe
 
 #设置工作目录
 WorkDir=$(MAKEDIR)/
 
 #设置当前所有目标文件的所在路径
-ObjNames=$(OutputDir)\pcre_compile.obj $(OutputDir)\pcre_config.obj $(OutputDir)\pcre_dfa_exec.obj $(OutputDir)\pcre_exec.obj $(OutputDir)\pcre_fullinfo.obj $(OutputDir)\pcre_get.obj $(OutputDir)\pcre_globals.obj $(OutputDir)\pcre_info.obj $(OutputDir)\pcre_maketables.obj $(OutputDir)\pcre_newline.obj $(OutputDir)\pcre_ord2utf8.obj $(OutputDir)\pcre_refcount.obj $(OutputDir)\pcre_study.obj $(OutputDir)\pcre_tables.obj $(OutputDir)\pcre_try_flipped.obj $(OutputDir)\pcre_ucp_searchfuncs.obj $(OutputDir)\pcre_valid_utf8.obj $(OutputDir)\pcre_version.obj $(OutputDir)\pcre_xclass.obj $(OutputDir)\pcre_chartables.obj 
+ObjNames=$(OutputDir)\LeakDetector.obj $(OutputDir)\Demo.obj 
 
 #设置输出目录
 OutputDir=Out
@@ -21,7 +19,7 @@ OutputDir=Out
 All:buildOutputDir $(ProjName) final
 
 #填充需要连接LIB的地方，有些情况下，需要使用htmlhelp.lib
-AdditLibs=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib 
+AdditLibs=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ../pcre/Out/pcre.lib 
 
 #设置子系统类型，WINDOWS或CONSOLE
 SubSysType=CONSOLE
@@ -30,7 +28,7 @@ SubSysType=CONSOLE
 LinkConfig=/nologo /subsystem:$(SubSysType) /incremental:no /debug
 
 #通用的lib.exe的配置信息
-LibConfig=/nologo /ltcg
+LibConfig=/nologo /ltcg /debug
 
 #设置待编译的源文件
 ObjFiles= $(ObjNames) \
@@ -54,7 +52,7 @@ CharSetType=UNICODE
 CLConfig=/MT /EHsc /c /W4 /D "WIN32" /D "NDEBUG" /D "_CRT_SECURE_NO_WARNINGS" /D "_$(SubSysType)" /D "_$(CharSetType)" /D "$(CharSetType)" -Fo"$(OutputDir)/" /INCREMENTAL:NO
 
 #设置附加包含目录
-INCLUDE=$(INCLUDE);pcre-7.0;pcre-7.0-src;
+INCLUDE=$(INCLUDE);..\pcre\pcre-7.0-src;..\pcre\pcre-7.0;
 
 #设置附加链接库目录
 LIB=$(LIB);
@@ -64,7 +62,7 @@ buildOutputDir:
   if not exist "$(OutputDir)" mkdir "$(OutputDir)"
 
 #设置待编译的源文件
-CppFiles="$(WorkDir)pcre-7.0-src\pcre_compile.c" "$(WorkDir)pcre-7.0-src\pcre_config.c" "$(WorkDir)pcre-7.0-src\pcre_dfa_exec.c" "$(WorkDir)pcre-7.0-src\pcre_exec.c" "$(WorkDir)pcre-7.0-src\pcre_fullinfo.c" "$(WorkDir)pcre-7.0-src\pcre_get.c" "$(WorkDir)pcre-7.0-src\pcre_globals.c" "$(WorkDir)pcre-7.0-src\pcre_info.c" "$(WorkDir)pcre-7.0-src\pcre_maketables.c" "$(WorkDir)pcre-7.0-src\pcre_newline.c" "$(WorkDir)pcre-7.0-src\pcre_ord2utf8.c" "$(WorkDir)pcre-7.0-src\pcre_refcount.c" "$(WorkDir)pcre-7.0-src\pcre_study.c" "$(WorkDir)pcre-7.0-src\pcre_tables.c" "$(WorkDir)pcre-7.0-src\pcre_try_flipped.c" "$(WorkDir)pcre-7.0-src\pcre_ucp_searchfuncs.c" "$(WorkDir)pcre-7.0-src\pcre_valid_utf8.c" "$(WorkDir)pcre-7.0-src\pcre_version.c" "$(WorkDir)pcre-7.0-src\pcre_xclass.c" "$(WorkDir)pcre-7.0\pcre_chartables.c" 
+CppFiles="$(WorkDir)LeakDetector\LeakDetector.cpp" "$(WorkDir)Demo.cpp" 
 
 #编译源文件
 !IFDEF PRECOMPILE
