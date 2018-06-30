@@ -10,7 +10,7 @@ ExtName=.exe
 WorkDir=$(MAKEDIR)/
 
 #设置当前所有目标文件的所在路径
-ObjNames=$(OutputDir)\Demo.obj $(OutputDir)\convert_utf.obj 
+ObjNames=$(OutputDir)\Demo.obj $(OutputDir)\convert_utf.obj $(OutputDir)\convert_wrapper.obj 
 
 #设置输出目录
 OutputDir=Out
@@ -59,7 +59,7 @@ buildOutputDir:
   if not exist "$(OutputDir)" mkdir "$(OutputDir)"
 
 #设置待编译的源文件
-CppFiles="$(WorkDir)Demo.cpp" "$(WorkDir)convert_utf.c" 
+CppFiles="$(WorkDir)Demo.cpp" "$(WorkDir)convert_utf.cpp" "$(WorkDir)convert_wrapper.cpp"
 
 #编译源文件
 !IFDEF PRECOMPILE
